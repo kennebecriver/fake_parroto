@@ -126,7 +126,7 @@ function updateDisplay() {
 }
 
 function playNow() {
-  if (chunks.length === 0) return alert('Сначала разбейте субтитры');
+  if (!chunks.length) return alert('Сначала разбейте субтитры');
 
   const c = chunks[currentIdx];
 
@@ -137,23 +137,23 @@ function playNow() {
   sendCommand('seekTo', [c.start, true]);
 
   setTimeout(() => {
-    sendCommand('pauseVideo'); // сброс состояния
+    sendCommand('pauseVideo'); // сброс
 
     setTimeout(() => {
       sendCommand('playVideo');
-      log(`Команда playVideo отправлена`);
+      log(`Команда playVideo`);
 
-      // Повторная попытка запуска
-      setTimeout(() => sendCommand('playVideo'), 600);
+      setTimeout(() => sendCommand('playVideo'), 600); // повтор
 
-      // Остановка
-      const durationMs = Math.max(1000, (c.end - c.start) * 1000 + 1000); // минимум 1 сек + запас
+      const durationMs = Math.max(1000, (c.end - c.start) * 1000 + 1200);
       activeTimer = setTimeout(() => {
         sendCommand('pauseVideo');
-        log('Чанк остановлен по времени');
+        // Ключевой хак: сразу перемотать назад, чтобы не дать end screen появиться
+        sendCommand('seekTo', [c.start, true]);
+        log('Чанк остановлен + перемотка назад (анти-end screen)');
       }, durationMs);
     }, 800);
-  }, 1800); // увеличенная задержка после seek
+  }, 1800);
 }
 
 function next() {
