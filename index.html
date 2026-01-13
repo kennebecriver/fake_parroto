@@ -3,16 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Чанки — yVnlvaxFQ6E (метки исправлены)</title>
+  <title>Чанки — yVnlvaxFQ6E (метки наконец-то ОК)</title>
   <style>
     body { font-family: system-ui, sans-serif; margin:0; padding:20px; background:#f9f9f9; line-height:1.4; max-width:960px; margin:0 auto; }
     #player-wrap { position:relative; width:100%; aspect-ratio:16/9; max-width:720px; background:#000; margin:0 auto 20px; }
     iframe { width:100%; height:100%; border:none; }
-    textarea { width:100%; height:240px; font-family:monospace; font-size:13px; padding:10px; margin:10px 0; }
+    textarea { width:100%; height:280px; font-family:monospace; font-size:13px; padding:10px; margin:10px 0; }
     .buttons { margin:15px 0; display:flex; gap:12px; flex-wrap:wrap; }
     button { padding:10px 20px; font-size:15px; cursor:pointer; }
     #current-text { background:white; border:1px solid #ddd; padding:18px; min-height:100px; margin:15px 0; white-space:pre-wrap; font-size:17px; }
-    #status { background:#e8ffe8; border:1px solid #b0ffb0; padding:12px; font-family:monospace; font-size:12.5px; white-space:pre-wrap; margin:15px 0; min-height:180px; color:#003300; overflow-y:auto; }
+    #status { background:#e8ffe8; border:1px solid #b0ffb0; padding:12px; font-family:monospace; font-size:12.5px; white-space:pre-wrap; margin:15px 0; min-height:200px; color:#003300; overflow-y:auto; }
   </style>
 </head>
 <body>
@@ -72,6 +72,7 @@ function parseChunks() {
 
   chunks = [];
   let currentChunk = null;
+  let prevEnd = 0;
 
   (data.events || []).forEach(ev => {
     if (typeof ev.tStartMs !== 'number') return;
@@ -85,16 +86,21 @@ function parseChunks() {
 
     if (isNewLine) {
       if (currentChunk && currentChunk.text.trim()) {
+        // Если нет нормального конца — берём начало следующего или prevEnd
+        if (currentChunk.end <= currentChunk.start) {
+          currentChunk.end = Math.max(prevEnd, currentChunk.start + 1.5);
+        }
         chunks.push(currentChunk);
       }
       currentChunk = null;
+      prevEnd = end;
       return;
     }
 
     let segText = segs.map(s => s.utf8 || '').join('').trim();
     if (!segText || segText === '[Applause]') return;
 
-    if (!currentChunk) {
+    if (currentChunk === null) {
       currentChunk = { start, end, text: segText };
     } else {
       currentChunk.text += ' ' + segText;
@@ -103,10 +109,13 @@ function parseChunks() {
   });
 
   if (currentChunk && currentChunk.text.trim()) {
+    if (currentChunk.end <= currentChunk.start) {
+      currentChunk.end = currentChunk.start + 2.0; // запас
+    }
     chunks.push(currentChunk);
   }
 
-  chunks = chunks.filter(c => c.end > c.start + 0.05);
+  chunks = chunks.filter(c => c.end > c.start + 0.1);
 
   currentIdx = 0;
   log(`Создано чанков: ${chunks.length}`);
@@ -148,7 +157,7 @@ function playNow() {
 
       setTimeout(() => sendCommand('playVideo'), 800);
 
-      const durationMs = Math.max(1500, (c.end - c.start) * 1000 + 1800);
+      const durationMs = Math.max(1500, (c.end - c.start) * 1000 + 2000);
       activeTimer = setTimeout(() => {
         sendCommand('pauseVideo');
         log(' → остановка');
