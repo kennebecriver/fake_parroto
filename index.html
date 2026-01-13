@@ -3,16 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Чанки — yVnlvaxFQ6E (метки исправлены)</title>
+  <title>Чанки — yVnlvaxFQ6E (метки ОК)</title>
   <style>
-    body { font-family: system-ui, sans-serif; margin:0; padding:20px; background:#f9f9f9; line-height:1.4; max-width:900px; margin:0 auto; }
+    body { font-family: system-ui, sans-serif; margin:0; padding:20px; background:#f9f9f9; line-height:1.4; max-width:960px; margin:0 auto; }
     #player-wrap { position:relative; width:100%; aspect-ratio:16/9; max-width:720px; background:#000; margin:0 auto 20px; }
     iframe { width:100%; height:100%; border:none; }
-    textarea { width:100%; height:220px; font-family:monospace; font-size:13px; padding:10px; margin:10px 0; }
+    textarea { width:100%; height:240px; font-family:monospace; font-size:13px; padding:10px; margin:10px 0; }
     .buttons { margin:15px 0; display:flex; gap:12px; flex-wrap:wrap; }
     button { padding:10px 20px; font-size:15px; cursor:pointer; }
     #current-text { background:white; border:1px solid #ddd; padding:18px; min-height:100px; margin:15px 0; white-space:pre-wrap; font-size:17px; }
-    #status { background:#e8ffe8; border:1px solid #b0ffb0; padding:12px; font-family:monospace; font-size:13px; white-space:pre-wrap; margin:15px 0; min-height:160px; color:#003300; overflow-y:auto; }
+    #status { background:#e8ffe8; border:1px solid #b0ffb0; padding:12px; font-family:monospace; font-size:12.5px; white-space:pre-wrap; margin:15px 0; min-height:180px; color:#003300; overflow-y:auto; }
   </style>
 </head>
 <body>
@@ -71,48 +71,50 @@ function parseChunks() {
   }
 
   chunks = [];
-  let current = null;
+  let currentChunk = null;
 
   (data.events || []).forEach(ev => {
     if (typeof ev.tStartMs !== 'number') return;
 
     const start = ev.tStartMs / 1000;
-    const dur = (ev.get('dDurationMs') || 0) / 1000;
+    const dur = (ev.dDurationMs || 0) / 1000;
     const end = start + dur;
 
     const segs = ev.segs || [];
     const isNewLine = segs.length === 1 && segs[0].utf8 === '\n';
 
     if (isNewLine) {
-      if (current && current.text.trim()) {
-        chunks.push(current);
+      if (currentChunk && currentChunk.text.trim()) {
+        chunks.push(currentChunk);
       }
-      current = null;
+      currentChunk = null; // граница → ждём новый текст
       return;
     }
 
     let segText = segs.map(s => s.utf8 || '').join('').trim();
     if (!segText || segText === '[Applause]') return;
 
-    if (!current) {
-      current = { start, end, text: segText };
+    // Новый чанк или продолжение
+    if (!currentChunk) {
+      currentChunk = { start, end, text: segText };
     } else {
-      current.text += ' ' + segText;
-      current.end = Math.max(current.end, end);
+      currentChunk.text += ' ' + segText;
+      currentChunk.end = Math.max(currentChunk.end, end);
     }
   });
 
-  if (current && current.text.trim()) {
-    chunks.push(current);
+  // Последний чанк
+  if (currentChunk && currentChunk.text.trim()) {
+    chunks.push(currentChunk);
   }
 
-  // Фильтр нулевых/обратных интервалов
+  // Фильтр
   chunks = chunks.filter(c => c.end > c.start + 0.05);
 
   currentIdx = 0;
   log(`Создано чанков: ${chunks.length}`);
   chunks.forEach((c, i) => {
-    log(`  #${i+1}: [${c.start.toFixed(2)} → ${c.end.toFixed(2)}]  "${c.text.substring(0, 50)}..."`);
+    log(`  #${i+1}: [${c.start.toFixed(2)} → ${c.end.toFixed(2)}]  "${c.text.substring(0, 60)}..."`);
   });
 
   updateDisplay();
@@ -147,15 +149,15 @@ function playNow() {
       sendCommand('playVideo');
       log(' → playVideo');
 
-      setTimeout(() => sendCommand('playVideo'), 700);
+      setTimeout(() => sendCommand('playVideo'), 800);
 
-      const durationMs = Math.max(1000, (c.end - c.start) * 1000 + 1500);
+      const durationMs = Math.max(1500, (c.end - c.start) * 1000 + 1800);
       activeTimer = setTimeout(() => {
         sendCommand('pauseVideo');
         log(' → остановка');
       }, durationMs);
-    }, 800);
-  }, 2000);
+    }, 900);
+  }, 2200);
 }
 
 function next() {
