@@ -23,11 +23,11 @@
       height: 100%;
       border: none;
     }
-    textarea { width:100%; height:160px; font-family:monospace; font-size:13px; padding:10px; margin:10px 0; }
+textarea { width:100%; height:180px; font-family:monospace; font-size:13px; padding:10px; margin:10px 0; }
     .buttons { margin:15px 0; display:flex; gap:12px; flex-wrap:wrap; }
     button { padding:10px 20px; font-size:15px; cursor:pointer; }
     #current-text { background:white; border:1px solid #ddd; padding:18px; min-height:100px; margin:15px 0; white-space:pre-wrap; font-size:17px; }
-    #status { background:#e8ffe8; border:1px solid #b0ffb0; padding:12px; font-family:monospace; font-size:13px; white-space:pre-wrap; margin:15px 0; min-height:100px; color:#003300; overflow-y:auto; }
+    #status { background:#e8ffe8; border:1px solid #b0ffb0; padding:12px; font-family:monospace; font-size:13px; white-space:pre-wrap; margin:15px 0; min-height:140px; color:#003300; overflow-y:auto; }
   </style>
 </head>
 <body>
@@ -83,47 +83,55 @@ function parseChunks() {
   try { data = JSON.parse(text); } catch (e) { log('Ошибка JSON: ' + e.message); return; }
 
   chunks = [];
-  let current = null; // теперь создаём только когда есть текст
+  let current = null;
 
   (data.events || []).forEach(ev => {
     if (typeof ev.tStartMs !== 'number') return;
 
-    const startSec = ev.tStartMs / 1000;
-    const durationSec = (ev.dDurationMs || 0) / 1000;
-    const endSec = startSec + durationSec;
+    const start = ev.tStartMs / 1000;
+    const dur = (ev.dDurationMs || 0) / 1000;
+    const end = start + dur;
 
     const isNewLine = ev.segs?.length === 1 && ev.segs[0].utf8 === '\n';
 
     if (isNewLine) {
-      // Просто завершаем текущий чанк (если он есть), но не трогаем время конца
+      // Просто завершаем текущий чанк (если он существует и имеет текст)
       if (current && current.text.trim()) {
         chunks.push(current);
       }
-      current = null; // ждём следующего текста для нового чанка
+      current = null; // ждём следующего текста
       return;
     }
 
-    let segmentText = ev.segs?.map(s => s.utf8 || '').join('').trim() || '';
-    if (!segmentText || segmentText === '[Applause]') return;
+    // Пропускаем не-текст (Applause и т.п.)
+    let segText = ev.segs?.map(s => s.utf8 || '').join('').trim() || '';
+    if (!segText || segText === '[Applause]') return;
 
+    // Создаём новый чанк или продолжаем существующий
     if (!current) {
-      // Новый чанк начинается с первого текста после \n или в начале
-      current = { start: startSec, end: endSec, text: segmentText };
+      current = {
+        start: start,
+        end: end,
+        text: segText
+      };
     } else {
-      current.text += ' ' + segmentText;
-      current.end = endSec; // обновляем конец по последнему тексту
+      current.text += ' ' + segText;
+      current.end = Math.max(current.end, end); // обновляем конец
     }
   });
 
-  // Последний чанк
+  // Добавляем последний чанк, если он остался
   if (current && current.text.trim()) {
     chunks.push(current);
   }
 
+  // Финальная фильтрация (защита от ошибок)
+  chunks = chunks.filter(c => c.end > c.start + 0.1); // минимум 100 мс
+
   currentIdx = 0;
   log(`Создано чанков: ${chunks.length}`);
   chunks.forEach((c, i) => {
-    log(`  #${i+1}: [${c.start.toFixed(2)} → ${c.end.toFixed(2)}] "${c.text.substring(0,40)}..."`);
+    log(`  #${i+1}: [${c.start.toFixed(2)} → ${c.end.toFixed(2)}]  "${c.text.substring(0, 50)}..."`);
   });
 
   updateDisplay();
@@ -147,7 +155,7 @@ function playNow() {
 
   if (activeTimer) clearTimeout(activeTimer);
 
-  log(`Подготовка чанка ${currentIdx+1} [${c.start.toFixed(2)} → ${c.end.toFixed(2)}]`);
+  log(`Запуск чанка ${currentIdx+1} [${c.start.toFixed(2)} → ${c.end.toFixed(2)}]`);
 
   sendCommand('seekTo', [c.start, true]);
 
@@ -156,19 +164,18 @@ function playNow() {
 
     setTimeout(() => {
       sendCommand('playVideo');
-      log(`Команда playVideo отправлена`);
+      log(' → playVideo');
 
-      // Повторная попытка запуска
-      setTimeout(() => sendCommand('playVideo'), 600);
+      setTimeout(() => sendCommand('playVideo'), 600); // повтор для надёжности
 
-      // Остановка
-      const durationMs = Math.max(1000, (c.end - c.start) * 1000 + 1000); // минимум 1 сек + запас
+      // Длительность + запас на задержку
+      const durationMs = Math.max(800, (c.end - c.start) * 1000 + 1200);
       activeTimer = setTimeout(() => {
         sendCommand('pauseVideo');
-        log('Чанк остановлен по времени');
+        log(' → остановка чанка');
       }, durationMs);
-    }, 800);
-  }, 1800); // увеличенная задержка после seek
+    }, 700);
+  }, 1800); // задержка после seek — самая критичная
 }
 
 function next() {
