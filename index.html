@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Чанки — yVnlvaxFQ6E (метки ОК)</title>
+  <title>Чанки — yVnlvaxFQ6E (метки исправлены)</title>
   <style>
     body { font-family: system-ui, sans-serif; margin:0; padding:20px; background:#f9f9f9; line-height:1.4; max-width:960px; margin:0 auto; }
     #player-wrap { position:relative; width:100%; aspect-ratio:16/9; max-width:720px; background:#000; margin:0 auto 20px; }
@@ -87,14 +87,13 @@ function parseChunks() {
       if (currentChunk && currentChunk.text.trim()) {
         chunks.push(currentChunk);
       }
-      currentChunk = null; // граница → ждём новый текст
+      currentChunk = null;
       return;
     }
 
     let segText = segs.map(s => s.utf8 || '').join('').trim();
     if (!segText || segText === '[Applause]') return;
 
-    // Новый чанк или продолжение
     if (!currentChunk) {
       currentChunk = { start, end, text: segText };
     } else {
@@ -103,12 +102,10 @@ function parseChunks() {
     }
   });
 
-  // Последний чанк
   if (currentChunk && currentChunk.text.trim()) {
     chunks.push(currentChunk);
   }
 
-  // Фильтр
   chunks = chunks.filter(c => c.end > c.start + 0.05);
 
   currentIdx = 0;
