@@ -137,7 +137,8 @@
            if (activeTimer) clearTimeout(activeTimer);
          
            log(`Запуск чанка ${currentIdx+1} [${c.start.toFixed(2)} → ${c.end.toFixed(2)}]`);
-         
+
+           sendCommand('pauseVideo');
            sendCommand('seekTo', [c.start, true]);
          
            setTimeout(() => {
