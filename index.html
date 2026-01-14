@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>чанки</title>
+  <title>Fake Parroto</title>
   <script src="https://www.youtube.com/iframe_api"></script>
   <style>
     body{margin:10px;font-family:Arial}
     #player{width:100%;aspect-ratio:16/9;background:#000}
-    textarea{width:100%;height:120px;font-family:monospace}
+    input{width:100%;padding:6px;margin:6px 0}
     button{margin:6px 8px 6px 0;padding:6px 12px}
     #text{background:#fff;border:1px solid #ccc;padding:12px;min-height:60px;white-space:pre-wrap}
   </style>
@@ -16,8 +16,9 @@
 <body>
 
 <div id="player"></div>
-<textarea id="json" placeholder="вставь json3"></textarea>
-<button onclick="parse()">Разбить</button>
+
+<input id="subsUrl" placeholder="URL субтитров (или укажи в ?subs=...)" style="display:none">
+<button id="loadBtn" onclick="loadSubs()" style="display:none">Загрузить</button>
 
 <div id="text">субтитры не загружены</div>
 
@@ -27,25 +28,52 @@
 <span id="info"></span>
 
 <script>
-let player, chunks = [], i = 0, tmr;
+let player, chunks = [], idx = 0, tmr;
 
 window.onYouTubeIframeAPIReady = () => {
   player = new YT.Player('player', {
     height: '100%',
     width: '100%',
-    videoId: 'qibhr5vneEk',
     playerVars: { playsinline:1, enablejsapi:1, rel:0 }
   });
+  // Автозагрузка из query-параметров
+  autoLoadFromQuery();
 };
 
-function parse() {
-  const txt = document.getElementById('json').value.trim();
-  if (!txt) return;
-  
-  let data;
-  try { data = JSON.parse(txt); } catch { return; }
+function autoLoadFromQuery() {
+  const params = new URLSearchParams(location.search);
+  const subs = params.get('subs');
+  const v = params.get('v');
 
-  // Собираем все слова с временем
+  if (subs) {
+    loadFromUrl(subs);
+  } else if (v) {
+    player.loadVideoById(v);
+    document.getElementById('subsUrl').style.display = 'block';
+    document.getElementById('loadBtn').style.display = 'inline';
+  } else {
+    document.getElementById('subsUrl').style.display = 'block';
+    document.getElementById('loadBtn').style.display = 'inline';
+  }
+}
+
+function loadSubs() {
+  const url = document.getElementById('subsUrl').value.trim();
+  if (url) loadFromUrl(url);
+}
+
+function loadFromUrl(url) {
+  const p = new URLSearchParams(new URL(url).search);
+  const vid = p.get('v');
+  if (vid) player.loadVideoById(vid);
+
+  fetch(url)
+    .then(r => r.json())
+    .then(data => parse(data))
+    .catch(e => alert('Ошибка загрузки: ' + e.message));
+}
+
+function parse(data) {
   const words = [];
   (data.events || []).forEach(e => {
     if (!e.tStartMs || !e.segs) return;
@@ -65,21 +93,14 @@ function parse() {
 
   for (let j = 1; j < words.length; j++) {
     curText += ' ' + words[j].text;
-
-    // Если текущее слово заканчивается точкой — завершаем чанк
     if (words[j].text.endsWith('.')) {
-      const chunkEnd = words[j].time / 1000 + 0.5; // небольшой запас после точки
-      chunks.push({
-        start: curStart,
-        end: chunkEnd,
-        text: curText.trim()
-      });
+      const end = words[j].time / 1000 + 0.6;
+      chunks.push({start: curStart, end, text: curText.trim()});
       curText = '';
-      curStart = (j + 1 < words.length) ? words[j + 1].time / 1000 : chunkEnd;
+      curStart = (j + 1 < words.length) ? words[j + 1].time / 1000 : end;
     }
   }
 
-  // Добавляем остаток, если точка не нашлась в конце
   if (curText.trim()) {
     chunks.push({
       start: curStart,
@@ -88,19 +109,21 @@ function parse() {
     });
   }
 
-  i = 0;
+  idx = 0;
   show();
 }
 
 function show() {
-  const c = chunks[i];
+  if (!chunks.length) return;
+  const c = chunks[idx];
   document.getElementById('text').textContent = c.text;
-  document.getElementById('info').textContent = `${i+1}/${chunks.length}  [${c.start.toFixed(1)}–${c.end.toFixed(1)}]`;
+  document.getElementById('info').textContent = 
+    `${idx+1}/${chunks.length} [${c.start.toFixed(1)}–${c.end.toFixed(1)}]`;
 }
 
 function playNow() {
   if (!chunks.length || !player) return;
-  const c = chunks[i];
+  const c = chunks[idx];
   player.pauseVideo();
   player.seekTo(c.start, true);
   setTimeout(() => {
@@ -111,12 +134,12 @@ function playNow() {
         player.pauseVideo();
         clearInterval(tmr);
       }
-    }, 100);
-  }, 500);
+    }, 60);
+  }, 400);
 }
 
-function next() { if (i + 1 < chunks.length) { i++; show(); playNow(); } }
-function prev() { if (i > 0) { i--; show(); playNow(); } }
+function next() { if (idx + 1 < chunks.length) { idx++; show(); playNow(); } }
+function prev() { if (idx > 0) { idx--; show(); playNow(); } }
 </script>
 </body>
 </html>
