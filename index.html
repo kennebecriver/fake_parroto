@@ -83,74 +83,81 @@ function parseChunks() {
   try { data = JSON.parse(raw); }
   catch (e) { log('Ошибка JSON: ' + e.message); return; }
 
-  // Шаг 1: Собираем плоскую структуру слов с абсолютным временем начала
+  // Шаг 1: Собираем все слова с абсолютным временем начала
   const words = [];
   const events = data.events || [];
+
+  let lastEventEndMs = 0;
 
   events.forEach(ev => {
     if (typeof ev.tStartMs !== 'number') return;
 
     const eventStartMs = ev.tStartMs;
-    const isAppend = ev.aAppend === 1;
+    const eventDurationMs = ev.dDurationMs || 0;
 
-    if (ev.segs) {
-      // Пропускаем специальные события вроде [Applause] или \n
-      if (ev.segs.length === 1 && (ev.segs[0].utf8 === '\n' || ev.segs[0].utf8.startsWith('[') && ev.segs[0].utf8.endsWith(']'))) {
-        return;
-      }
-
-      ev.segs.forEach(seg => {
-        if (seg.utf8 && seg.utf8.trim()) {
-          const absoluteTimeMs = eventStartMs + (seg.tOffsetMs || 0);
-          words.push({
-            text: seg.utf8.trim(),
-            timeMs: absoluteTimeMs,
-            acAsrConf: seg.acAsrConf || 0
-          });
-        }
-      });
+    // Пропускаем события без текста или специальные (\n, [Applause])
+    if (!ev.segs || ev.segs.length === 0) return;
+    if (ev.segs.length === 1 && (ev.segs[0].utf8 === '\n' || ev.segs[0].utf8.trim().startsWith('['))) {
+      // Просто обновляем lastEventEndMs, чтобы учитывать паузу
+      lastEventEndMs = Math.max(lastEventEndMs, eventStartMs + eventDurationMs);
+      return;
     }
+
+    let segOffset = 0;
+    ev.segs.forEach(seg => {
+      if (seg.utf8 && seg.utf8.trim()) {
+        const wordStartMs = eventStartMs + (seg.tOffsetMs || segOffset);
+        words.push({
+          text: seg.utf8.trim(),
+          timeMs: wordStartMs
+        });
+        segOffset += seg.tOffsetMs || 0; // на всякий случай
+      }
+    });
+
+    lastEventEndMs = Math.max(lastEventEndMs, eventStartMs + eventDurationMs);
   });
 
   log(`Собрано слов: ${words.length}`);
 
-  // Шаг 2: Формируем чанки на основе пауз между словами > 1000 мс (игнорируем acAsrConf, так как в примере всегда 0)
-  chunks = [];
   if (words.length === 0) return log('Нет слов для чанков');
 
-  let currentChunk = {
+  // Шаг 2: Разбиваем на чанки по паузе > 1000 мс между словами
+  chunks = [];
+  let current = {
     start: words[0].timeMs / 1000,
-    end: words[0].timeMs / 1000,  // будет обновлено
+    end: words[0].timeMs / 1000,
     text: words[0].text
   };
 
   for (let i = 1; i < words.length; i++) {
-    const prevTimeMs = words[i-1].timeMs;
-    const currTimeMs = words[i].timeMs;
-    const timeDiff = currTimeMs - prevTimeMs;
+    const prevTime = words[i-1].timeMs;
+    const currTime = words[i].timeMs;
+    const gapMs = currTime - prevTime;
 
-    if (timeDiff > 1000) {
-      // Завершаем текущий чанк (end = время начала следующего слова, так как duration слова не задан)
-      currentChunk.end = currTimeMs / 1000;
-      chunks.push(currentChunk);
-      log(`Чанк ${chunks.length}: [${currentChunk.start.toFixed(2)}–${currentChunk.end.toFixed(2)}] "${currentChunk.text.substring(0,50)}..."`);
+    if (gapMs > 1000) {
+      // Завершаем предыдущий чанк
+      current.end = currTime / 1000; // или prevTime / 1000 + небольшая дельта
+      chunks.push({ ...current });
+      log(`Чанк ${chunks.length}: [${current.start.toFixed(2)}–${current.end.toFixed(2)}] "${current.text.substring(0,60)}..."`);
 
       // Новый чанк
-      currentChunk = {
-        start: currTimeMs / 1000,
-        end: currTimeMs / 1000,
+      current = {
+        start: currTime / 1000,
+        end: currTime / 1000,
         text: words[i].text
       };
     } else {
-      // Добавляем слово в текущий чанк
-      currentChunk.text += ' ' + words[i].text;
-      currentChunk.end = currTimeMs / 1000;  // обновляем end на конец текущего слова (примерно)
+      // Продолжаем текущий чанк
+      current.text += ' ' + words[i].text;
+      current.end = currTime / 1000;
     }
   }
 
-  // Добавляем последний чанк
-  chunks.push(currentChunk);
-  log(`Чанк ${chunks.length}: [${currentChunk.start.toFixed(2)}–${currentChunk.end.toFixed(2)}] "${currentChunk.text.substring(0,50)}..."`);
+  // Последний чанк
+  current.end = Math.max(current.end, lastEventEndMs / 1000); // финальная длина
+  chunks.push({ ...current });
+  log(`Чанк ${chunks.length}: [${current.start.toFixed(2)}–${current.end.toFixed(2)}] "${current.text.substring(0,60)}..."`);
 
   idx = 0;
   log(`Всего чанков: ${chunks.length}`);
