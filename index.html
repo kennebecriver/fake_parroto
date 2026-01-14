@@ -15,10 +15,9 @@
 </head>
 <body>
 
+<input id="subsUrl" placeholder="URL timedtext https://www.youtube.com/api/timedtext...">
 <div id="player"></div>
-
-<input id="subsUrl" placeholder="URL субтитров (или укажи в ?subs=...)" style="display:none">
-<button id="loadBtn" onclick="loadSubs()" style="display:none">Загрузить</button>
+<button id="loadBtn" onclick="loadSubs()" >Загрузить</button>
 
 <div id="text">субтитры не загружены</div>
 
@@ -36,26 +35,7 @@ window.onYouTubeIframeAPIReady = () => {
     width: '100%',
     playerVars: { playsinline:1, enablejsapi:1, rel:0 }
   });
-  // Автозагрузка из query-параметров
-  autoLoadFromQuery();
 };
-
-function autoLoadFromQuery() {
-  const params = new URLSearchParams(location.search);
-  const subs = params.get('subs');
-  const v = params.get('v');
-
-  if (subs) {
-    loadFromUrl(subs);
-  } else if (v) {
-    player.loadVideoById(v);
-    document.getElementById('subsUrl').style.display = 'block';
-    document.getElementById('loadBtn').style.display = 'inline';
-  } else {
-    document.getElementById('subsUrl').style.display = 'block';
-    document.getElementById('loadBtn').style.display = 'inline';
-  }
-}
 
 function loadSubs() {
   const url = document.getElementById('subsUrl').value.trim();
@@ -65,7 +45,10 @@ function loadSubs() {
 function loadFromUrl(url) {
   const p = new URLSearchParams(new URL(url).search);
   const vid = p.get('v');
-  if (vid) player.loadVideoById(vid);
+  if (vid) {
+    player.loadVideoById(vid);
+    player.pauseVideo();
+  }
 
   fetch(url)
     .then(r => r.json())
@@ -89,12 +72,12 @@ function parse(data) {
 
   chunks = [];
   let curText = words[0].text;
-  let curStart = words[0].time / 1000;
+  let curStart = words[0].time / 1000 - 0.5;
 
   for (let j = 1; j < words.length; j++) {
     curText += ' ' + words[j].text;
     if (words[j].text.endsWith('.')) {
-      const end = words[j].time / 1000 + 0.6;
+      const end = words[j].time / 1000 + 0.5;
       chunks.push({start: curStart, end, text: curText.trim()});
       curText = '';
       curStart = (j + 1 < words.length) ? words[j + 1].time / 1000 : end;
