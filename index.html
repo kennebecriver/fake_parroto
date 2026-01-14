@@ -13,20 +13,40 @@
     #text{background:#fff;border:1px solid #ccc;padding:12px;min-height:60px;white-space:pre-wrap}
   </style>
 </head>
-<body>
+<body style="margin:10px; font-family:Arial;">
 
-<div style="display:flex; gap:8px; align-items:center; margin:10px 0;">
+<div style="display:flex; gap:8px; align-items:center; margin-bottom:20px;">
   <input id="subsUrl" placeholder="URL timedtext https://www.youtube.com/api/timedtext..." style="flex:1; padding:6px;">
-  <button id="loadBtn" onclick="loadSubs()">Загрузить</button>
+  <button onclick="loadSubs()">Загрузить</button>
 </div>
-<div id="player"></div>
 
-<div id="text">субтитры не загружены</div>
-<input type="checkbox" id="loopChk">
-<button onclick="prev()">←</button>
-<button onclick="playNow()">▶</button>
-<button onclick="next()">→</button>
-<span id="info"></span>
+<div style="display:flex; gap:20px; flex-wrap:wrap;">
+
+  <!-- Левая колонка: плеер -->
+  <div style="flex:1; min-width:320px;">
+    <div id="player" style="width:100%; aspect-ratio:16/9; background:#000;"></div>
+  </div>
+
+  <!-- Правая колонка: субтитры + чекбокс + кнопки + info -->
+  <div style="flex:1; min-width:320px; display:flex; flex-direction:column; gap:12px;">
+
+    <div id="text" style="background:#fff; border:1px solid #ccc; padding:12px; min-height:80px; white-space:pre-wrap;">
+      субтитры не загружены
+    </div>
+
+    <div style="display:flex; flex-wrap:wrap; align-items:center; gap:12px;">
+      <label style="white-space:nowrap;">
+        <input type="checkbox" id="loopChk"> Повторять чанк
+      </label>
+      <button onclick="prev()">←</button>
+      <button onclick="playNow()">▶</button>
+      <button onclick="next()">→</button>
+      <span id="info" style="font-weight:bold; margin-left:10px;"></span>
+    </div>
+
+  </div>
+
+</div>
 
 <script>
 let player, chunks = [], idx = 0, tmr;
