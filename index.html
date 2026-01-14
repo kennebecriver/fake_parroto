@@ -7,7 +7,7 @@
   <script src="https://www.youtube.com/iframe_api"></script>
   <style>
     body { font-family: system-ui, sans-serif; margin:0; padding:20px; background:#f9f9f9; line-height:1.4; max-width:840px; margin:0 auto; }
-    #player-wrap { position:relative; width:100%; aspect-ratio:16/9; max-width:720px; background:#000; margin:0 auto 20px; }
+    #player-wrap { position:relative; width:100%; aspect-ratio:16/9; max-width:400px; background:#000; margin:0 auto 20px; }
     #player { width:100%; height:100%; }
     textarea { width:100%; height:160px; font-family:monospace; font-size:13px; padding:10px; margin:10px 0; box-sizing:border-box; }
     .buttons { margin:15px 0; display:flex; gap:12px; flex-wrap:wrap; }
@@ -83,75 +83,74 @@ function parseChunks() {
   try { data = JSON.parse(raw); }
   catch (e) { log('Ошибка JSON: ' + e.message); return; }
 
-  chunks = [];
-  let currentText = '';
-  let currentStart = 0;
-  let currentEnd = 0;
-  let hasStarted = false;
-
+  // Шаг 1: Собираем плоскую структуру слов с абсолютным временем начала
+  const words = [];
   const events = data.events || [];
-  events.forEach((ev, i) => {
+
+  events.forEach(ev => {
     if (typeof ev.tStartMs !== 'number') return;
 
-    const startMs = ev.tStartMs;
-    const durationMs = ev.dDurationMs || 0;
-    const endMs = startMs + durationMs;
+    const eventStartMs = ev.tStartMs;
+    const isAppend = ev.aAppend === 1;
 
-    // Проверяем, является ли это событием новой строки
-    const isNewLine = ev.aAppend === 1 && ev.segs && ev.segs.length === 1 && ev.segs[0].utf8 === '\n';
-
-    if (isNewLine) {
-      // Завершаем текущий чанк, если в нём есть текст
-      if (currentText.trim()) {
-        chunks.push({
-          start: currentStart / 1000,
-          end: startMs / 1000,  // конец чанка на моменте появления \n
-          text: currentText.trim()
-        });
-        log(`Создан чанк ${chunks.length}: [${(currentStart / 1000).toFixed(2)} - ${(startMs / 1000).toFixed(2)}] "${currentText.trim().substring(0, 50)}..."`);
-      }
-      // Начинаем новый чанк после \n
-      currentText = '';
-      currentStart = endMs;  // начало следующего после длительности \n события
-      currentEnd = 0;
-      hasStarted = false;
-      return;
-    }
-
-    // Проверяем на специальные события вроде [Applause]
-    if (ev.segs && ev.segs.length === 1 && ev.segs[0].utf8.startsWith('[') && ev.segs[0].utf8.endsWith(']')) {
-      // Пропускаем [Applause] и подобные, не добавляем в текст
-      return;
-    }
-
-    // Обычное текстовое событие
-    let segText = '';
     if (ev.segs) {
-      segText = ev.segs.map(s => s.utf8 || '').join('').trim();
-    }
-
-    if (segText) {
-      if (currentText) currentText += ' ';
-      currentText += segText;
-      currentEnd = endMs;
-
-      // Если это первое текстовое событие в чанке — устанавливаем start
-      if (!hasStarted) {
-        currentStart = startMs;
-        hasStarted = true;
+      // Пропускаем специальные события вроде [Applause] или \n
+      if (ev.segs.length === 1 && (ev.segs[0].utf8 === '\n' || ev.segs[0].utf8.startsWith('[') && ev.segs[0].utf8.endsWith(']'))) {
+        return;
       }
+
+      ev.segs.forEach(seg => {
+        if (seg.utf8 && seg.utf8.trim()) {
+          const absoluteTimeMs = eventStartMs + (seg.tOffsetMs || 0);
+          words.push({
+            text: seg.utf8.trim(),
+            timeMs: absoluteTimeMs,
+            acAsrConf: seg.acAsrConf || 0
+          });
+        }
+      });
     }
   });
 
-  // Добавляем последний чанк, если есть текст
-  if (currentText.trim()) {
-    chunks.push({
-      start: currentStart / 1000,
-      end: currentEnd / 1000,
-      text: currentText.trim()
-    });
-    log(`Создан чанк ${chunks.length}: [${(currentStart / 1000).toFixed(2)} - ${(currentEnd / 1000).toFixed(2)}] "${currentText.trim().substring(0, 50)}..."`);
+  log(`Собрано слов: ${words.length}`);
+
+  // Шаг 2: Формируем чанки на основе пауз между словами > 1000 мс (игнорируем acAsrConf, так как в примере всегда 0)
+  chunks = [];
+  if (words.length === 0) return log('Нет слов для чанков');
+
+  let currentChunk = {
+    start: words[0].timeMs / 1000,
+    end: words[0].timeMs / 1000,  // будет обновлено
+    text: words[0].text
+  };
+
+  for (let i = 1; i < words.length; i++) {
+    const prevTimeMs = words[i-1].timeMs;
+    const currTimeMs = words[i].timeMs;
+    const timeDiff = currTimeMs - prevTimeMs;
+
+    if (timeDiff > 1000) {
+      // Завершаем текущий чанк (end = время начала следующего слова, так как duration слова не задан)
+      currentChunk.end = currTimeMs / 1000;
+      chunks.push(currentChunk);
+      log(`Чанк ${chunks.length}: [${currentChunk.start.toFixed(2)}–${currentChunk.end.toFixed(2)}] "${currentChunk.text.substring(0,50)}..."`);
+
+      // Новый чанк
+      currentChunk = {
+        start: currTimeMs / 1000,
+        end: currTimeMs / 1000,
+        text: words[i].text
+      };
+    } else {
+      // Добавляем слово в текущий чанк
+      currentChunk.text += ' ' + words[i].text;
+      currentChunk.end = currTimeMs / 1000;  // обновляем end на конец текущего слова (примерно)
+    }
   }
+
+  // Добавляем последний чанк
+  chunks.push(currentChunk);
+  log(`Чанк ${chunks.length}: [${currentChunk.start.toFixed(2)}–${currentChunk.end.toFixed(2)}] "${currentChunk.text.substring(0,50)}..."`);
 
   idx = 0;
   log(`Всего чанков: ${chunks.length}`);
