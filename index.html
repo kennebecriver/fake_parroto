@@ -135,7 +135,7 @@ function parseChunks() {
     const currTime = words[i].timeMs;
     const gapMs = currTime - prevTime;
 
-    if (gapMs > 1000) {
+    if (gapMs > 2000) {
       // Завершаем предыдущий чанк
       current.end = currTime / 1000; // или prevTime / 1000 + небольшая дельта
       chunks.push({ ...current });
@@ -176,6 +176,7 @@ function playNow() {
   if (!player) return log('Плеер ещё не готов');
 
   const c = chunks[idx];
+  player.pauseVideo();
   player.seekTo(c.start, true);
 
   setTimeout(() => {
