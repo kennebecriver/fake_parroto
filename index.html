@@ -1,214 +1,122 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Чанки — yVnlvaxFQ6E</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>чанки</title>
   <script src="https://www.youtube.com/iframe_api"></script>
   <style>
-    body { font-family: system-ui, sans-serif; margin:0; padding:20px; background:#f9f9f9; line-height:1.4; max-width:840px; margin:0 auto; }
-    #player-wrap { position:relative; width:100%; aspect-ratio:16/9; max-width:400px; background:#000; margin:0 auto 20px; }
-    #player { width:100%; height:100%; }
-    textarea { width:100%; height:160px; font-family:monospace; font-size:13px; padding:10px; margin:10px 0; box-sizing:border-box; }
-    .buttons { margin:15px 0; display:flex; gap:12px; flex-wrap:wrap; }
-    button { padding:10px 20px; font-size:15px; cursor:pointer; }
-    #current-text { background:white; border:1px solid #ddd; padding:18px; min-height:100px; margin:15px 0; white-space:pre-wrap; font-size:17px; }
-    #status { background:#fff8e1; border:1px solid #ffe082; padding:12px; font-family:monospace; font-size:13px; white-space:pre-wrap; margin:15px 0; min-height:100px; color:#5d4037; overflow-y:auto; }
+    body{margin:10px;font-family:Arial}
+    #player{width:100%;aspect-ratio:16/9;background:#000}
+    textarea{width:100%;height:120px;font-family:monospace}
+    button{margin:6px 8px 6px 0;padding:6px 12px}
+    #text{background:#fff;border:1px solid #ccc;padding:12px;min-height:60px;white-space:pre-wrap}
   </style>
 </head>
 <body>
 
-<h2>Видео: yVnlvaxFQ6E + чанки субтитров</h2>
+<div id="player"></div>
+<textarea id="json" placeholder="вставь json3"></textarea>
+<button onclick="parse()">Разбить</button>
 
-<div id="player-wrap"><div id="player"></div></div>
+<div id="text">субтитры не загружены</div>
 
-<strong>Вставь JSON субтитров (json3):</strong><br>
-<textarea id="jsonInput"></textarea>
-
-<div class="buttons">
-  <button onclick="parseChunks()">Разбить на чанки</button>
-</div>
-
-<div id="current-text">Субтитры не загружены</div>
-
-<div class="buttons">
-  <button onclick="prev()">← Назад</button>
-  <button onclick="playNow()">▶ Играть чанк</button>
-  <button onclick="next()">Вперёд →</button>
-  <span id="info" style="margin-left:20px; font-weight:bold;"></span>
-</div>
-
-<div id="status">Статус плеера и лога...</div>
+<button onclick="prev()">←</button>
+<button onclick="playNow()">▶</button>
+<button onclick="next()">→</button>
+<span id="info"></span>
 
 <script>
-let player;
-let chunks = [];
-let idx = 0;
-let timer = null;
-
-function log(txt) {
-  document.getElementById('status').textContent += txt + '\n';
-  document.getElementById('status').scrollTop = document.getElementById('status').scrollHeight;
-}
+let player, chunks = [], i = 0, tmr;
 
 window.onYouTubeIframeAPIReady = () => {
-  log('API загружен');
   player = new YT.Player('player', {
     height: '100%',
     width: '100%',
-    videoId: 'yVnlvaxFQ6E',
-    playerVars: {
-      playsinline: 1,
-      enablejsapi: 1,
-      origin: window.location.origin,
-      rel: 0,
-      iv_load_policy: 3
-    },
-    events: {
-      'onReady': () => {
-        log('Плеер готов — можно управлять');
-        player.setPlaybackQuality('small');
-      },
-      'onStateChange': e => log(`Состояние: ${e.data}`),
-      'onError': e => log(`Ошибка плеера: ${e.data}`)
-    }
+    videoId: 'qibhr5vneEk',
+    playerVars: { playsinline:1, enablejsapi:1, rel:0 }
   });
 };
 
-function parseChunks() {
-  const raw = document.getElementById('jsonInput').value.trim();
-  if (!raw) return alert('Вставь JSON');
-
+function parse() {
+  const txt = document.getElementById('json').value.trim();
+  if (!txt) return;
+  
   let data;
-  try { data = JSON.parse(raw); }
-  catch (e) { log('Ошибка JSON: ' + e.message); return; }
+  try { data = JSON.parse(txt); } catch { return; }
 
-  // Шаг 1: Собираем все слова с абсолютным временем начала
+  // Собираем все слова с временем
   const words = [];
-  const events = data.events || [];
-
-  let lastEventEndMs = 0;
-
-  events.forEach(ev => {
-    if (typeof ev.tStartMs !== 'number') return;
-
-    const eventStartMs = ev.tStartMs;
-    const eventDurationMs = ev.dDurationMs || 0;
-
-    // Пропускаем события без текста или специальные (\n, [Applause])
-    if (!ev.segs || ev.segs.length === 0) return;
-    if (ev.segs.length === 1 && (ev.segs[0].utf8 === '\n' || ev.segs[0].utf8.trim().startsWith('['))) {
-      // Просто обновляем lastEventEndMs, чтобы учитывать паузу
-      lastEventEndMs = Math.max(lastEventEndMs, eventStartMs + eventDurationMs);
-      return;
-    }
-
-    let segOffset = 0;
-    ev.segs.forEach(seg => {
-      if (seg.utf8 && seg.utf8.trim()) {
-        const wordStartMs = eventStartMs + (seg.tOffsetMs || segOffset);
-        words.push({
-          text: seg.utf8.trim(),
-          timeMs: wordStartMs
-        });
-        segOffset += seg.tOffsetMs || 0; // на всякий случай
-      }
+  (data.events || []).forEach(e => {
+    if (!e.tStartMs || !e.segs) return;
+    const base = e.tStartMs;
+    e.segs.forEach(s => {
+      if (!s.utf8?.trim() || s.utf8 === '\n' || /^\[.*\]$/.test(s.utf8.trim())) return;
+      const time = base + (s.tOffsetMs || 0);
+      words.push({text: s.utf8.trim(), time});
     });
-
-    lastEventEndMs = Math.max(lastEventEndMs, eventStartMs + eventDurationMs);
   });
 
-  log(`Собрано слов: ${words.length}`);
+  if (!words.length) return;
 
-  if (words.length === 0) return log('Нет слов для чанков');
-
-  // Шаг 2: Разбиваем на чанки по паузе > 1000 мс между словами
   chunks = [];
-  let current = {
-    start: words[0].timeMs / 1000,
-    end: words[0].timeMs / 1000,
-    text: words[0].text
-  };
+  let curText = words[0].text;
+  let curStart = words[0].time / 1000;
 
-  for (let i = 1; i < words.length; i++) {
-    const prevTime = words[i-1].timeMs;
-    const currTime = words[i].timeMs;
-    const gapMs = currTime - prevTime;
+  for (let j = 1; j < words.length; j++) {
+    curText += ' ' + words[j].text;
 
-    if (gapMs > 2000) {
-      // Завершаем предыдущий чанк
-      current.end = currTime / 1000; // или prevTime / 1000 + небольшая дельта
-      chunks.push({ ...current });
-      log(`Чанк ${chunks.length}: [${current.start.toFixed(2)}–${current.end.toFixed(2)}] "${current.text.substring(0,60)}..."`);
-
-      // Новый чанк
-      current = {
-        start: currTime / 1000,
-        end: currTime / 1000,
-        text: words[i].text
-      };
-    } else {
-      // Продолжаем текущий чанк
-      current.text += ' ' + words[i].text;
-      current.end = currTime / 1000;
+    // Если текущее слово заканчивается точкой — завершаем чанк
+    if (words[j].text.endsWith('.')) {
+      const chunkEnd = words[j].time / 1000 + 0.5; // небольшой запас после точки
+      chunks.push({
+        start: curStart,
+        end: chunkEnd,
+        text: curText.trim()
+      });
+      curText = '';
+      curStart = (j + 1 < words.length) ? words[j + 1].time / 1000 : chunkEnd;
     }
   }
 
-  // Последний чанк
-  current.end = Math.max(current.end, lastEventEndMs / 1000); // финальная длина
-  chunks.push({ ...current });
-  log(`Чанк ${chunks.length}: [${current.start.toFixed(2)}–${current.end.toFixed(2)}] "${current.text.substring(0,60)}..."`);
+  // Добавляем остаток, если точка не нашлась в конце
+  if (curText.trim()) {
+    chunks.push({
+      start: curStart,
+      end: (words[words.length - 1].time / 1000) + 1.2,
+      text: curText.trim()
+    });
+  }
 
-  idx = 0;
-  log(`Всего чанков: ${chunks.length}`);
-  showChunk();
+  i = 0;
+  show();
 }
 
-function showChunk() {
-  if (!chunks.length) return;
-  const c = chunks[idx];
-  document.getElementById('current-text').textContent = c.text.trim();
-  document.getElementById('info').textContent = `Чанк ${idx+1}/${chunks.length}  [${c.start.toFixed(2)}–${c.end.toFixed(2)}с]`;
+function show() {
+  const c = chunks[i];
+  document.getElementById('text').textContent = c.text;
+  document.getElementById('info').textContent = `${i+1}/${chunks.length}  [${c.start.toFixed(1)}–${c.end.toFixed(1)}]`;
 }
 
 function playNow() {
-  if (!chunks.length) return alert('Сначала разбей субтитры');
-  if (!player) return log('Плеер ещё не готов');
-
-  const c = chunks[idx];
+  if (!chunks.length || !player) return;
+  const c = chunks[i];
   player.pauseVideo();
   player.seekTo(c.start, true);
-
   setTimeout(() => {
     player.playVideo();
-    log(`Старт чанка ${idx+1} с ${c.start.toFixed(2)}с`);
-
-    if (timer) clearInterval(timer);
-    timer = setInterval(() => {
+    clearInterval(tmr);
+    tmr = setInterval(() => {
       if (player.getCurrentTime() >= c.end - 0.1) {
         player.pauseVideo();
-        clearInterval(timer);
-        timer = null;
-        log('Чанк остановлен');
+        clearInterval(tmr);
       }
-    }, 80);
+    }, 100);
   }, 500);
 }
 
-function next() {
-  if (idx + 1 >= chunks.length) return alert('Конец');
-  idx++;
-  showChunk();
-  playNow();
-}
-
-function prev() {
-  if (idx <= 0) return alert('Начало');
-  idx--;
-  showChunk();
-  playNow();
-}
+function next() { if (i + 1 < chunks.length) { i++; show(); playNow(); } }
+function prev() { if (i > 0) { i--; show(); playNow(); } }
 </script>
-
 </body>
 </html>
