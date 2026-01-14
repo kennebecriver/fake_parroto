@@ -7,7 +7,7 @@
   <script src="https://www.youtube.com/iframe_api"></script>
   <style>
     body { font-family: system-ui, sans-serif; margin:0; padding:20px; background:#f9f9f9; line-height:1.4; max-width:840px; margin:0 auto; }
-    #player-wrap { position:relative; width:100%; aspect-ratio:16/9; max-width:320px; background:#000; margin:0 auto 20px; }
+    #player-wrap { position:relative; width:100%; aspect-ratio:16/9; max-width:720px; background:#000; margin:0 auto 20px; }
     #player { width:100%; height:100%; }
     textarea { width:100%; height:160px; font-family:monospace; font-size:13px; padding:10px; margin:10px 0; box-sizing:border-box; }
     .buttons { margin:15px 0; display:flex; gap:12px; flex-wrap:wrap; }
@@ -84,39 +84,77 @@ function parseChunks() {
   catch (e) { log('Ошибка JSON: ' + e.message); return; }
 
   chunks = [];
-  let current = { start:0, end:0, text:'' };
-  let has = false;
+  let currentText = '';
+  let currentStart = 0;
+  let currentEnd = 0;
+  let hasStarted = false;
 
-  (data.events || []).forEach(ev => {
+  const events = data.events || [];
+  events.forEach((ev, i) => {
     if (typeof ev.tStartMs !== 'number') return;
 
-    const s = ev.tStartMs / 1000;
-    const e = s + (ev.dDurationMs || 0) / 1000;
+    const startMs = ev.tStartMs;
+    const durationMs = ev.dDurationMs || 0;
+    const endMs = startMs + durationMs;
 
-    if (ev.segs?.length === 1 && ev.segs[0].utf8 === '\n') {
-      if (has && current.text.trim()) {
-        current.end = s;
-        chunks.push({ ...current });
+    // Проверяем, является ли это событием новой строки
+    const isNewLine = ev.aAppend === 1 && ev.segs && ev.segs.length === 1 && ev.segs[0].utf8 === '\n';
+
+    if (isNewLine) {
+      // Завершаем текущий чанк, если в нём есть текст
+      if (currentText.trim()) {
+        chunks.push({
+          start: currentStart / 1000,
+          end: startMs / 1000,  // конец чанка на моменте появления \n
+          text: currentText.trim()
+        });
+        log(`Создан чанк ${chunks.length}: [${(currentStart / 1000).toFixed(2)} - ${(startMs / 1000).toFixed(2)}] "${currentText.trim().substring(0, 50)}..."`);
       }
-      current = { start: e, end: 0, text: '' };
-      has = false;
+      // Начинаем новый чанк после \n
+      currentText = '';
+      currentStart = endMs;  // начало следующего после длительности \n события
+      currentEnd = 0;
+      hasStarted = false;
       return;
     }
 
-    let t = ev.segs?.map(s => s.utf8 || '').join('').trim() || '';
-    if (t && t !== '[Applause]') {
-      if (current.text) current.text += ' ';
-      current.text += t;
-      current.end = e;
-      has = true;
-      if (current.start === 0) current.start = s;
+    // Проверяем на специальные события вроде [Applause]
+    if (ev.segs && ev.segs.length === 1 && ev.segs[0].utf8.startsWith('[') && ev.segs[0].utf8.endsWith(']')) {
+      // Пропускаем [Applause] и подобные, не добавляем в текст
+      return;
+    }
+
+    // Обычное текстовое событие
+    let segText = '';
+    if (ev.segs) {
+      segText = ev.segs.map(s => s.utf8 || '').join('').trim();
+    }
+
+    if (segText) {
+      if (currentText) currentText += ' ';
+      currentText += segText;
+      currentEnd = endMs;
+
+      // Если это первое текстовое событие в чанке — устанавливаем start
+      if (!hasStarted) {
+        currentStart = startMs;
+        hasStarted = true;
+      }
     }
   });
 
-  if (has && current.text.trim()) chunks.push(current);
+  // Добавляем последний чанк, если есть текст
+  if (currentText.trim()) {
+    chunks.push({
+      start: currentStart / 1000,
+      end: currentEnd / 1000,
+      text: currentText.trim()
+    });
+    log(`Создан чанк ${chunks.length}: [${(currentStart / 1000).toFixed(2)} - ${(currentEnd / 1000).toFixed(2)}] "${currentText.trim().substring(0, 50)}..."`);
+  }
 
   idx = 0;
-  log(`Чанков создано: ${chunks.length}`);
+  log(`Всего чанков: ${chunks.length}`);
   showChunk();
 }
 
