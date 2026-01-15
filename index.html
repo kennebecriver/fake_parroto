@@ -7,12 +7,37 @@
   <script src="https://www.youtube.com/iframe_api"></script>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <style>
+    .secret-word {
+      min-width: 2.2em;
+      padding: 2px 6px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      background: #f8f9fa;
+      cursor: pointer;
+      user-select: none;
+      font-family: monospace;
+      transition: all 0.15s;
+    }
+
+    .secret-word.revealed,
+    .secret-word.always-visible {
+      background: #e3f2fd;
+      border-color: #90caf9;
+      cursor: default;
+    }
+
+    .secret-word:hover:not(.revealed):not(.always-visible) {
+      background: #ffe082;
+      border-color: #ffb300;
+    }
+  </style>
 </head>
 <body class="d-flex flex-column min-vh-100 bg-light">
 
   <header class="bg-white border-bottom py-2">
     <div class="container">
-      <h1 class="h5 mb-0 text-muted">Subtitle Player</h1>
+      <h1 class="h5 mb-0 text-muted">Fake Parroto</h1>
     </div>
   </header>
 
@@ -34,6 +59,8 @@
         <div class="col-12 col-md-6 d-flex flex-column gap-3">
 
           <textarea class="form-control form-control-sm" rows="4" placeholder="Type your answer here..."></textarea>
+          
+          <div id="hidden-words" class="border rounded p-3 small bg-white d-flex flex-wrap gap-2" style="min-height: 5rem; line-height: 2.1;"></div>
 
           <div id="text" class="border rounded p-3 small bg-white" style="min-height: 5rem;"></div>
 
@@ -132,10 +159,61 @@ function parse(data) {
   show();
 }
 
+// Добавь эту функцию где-нибудь в <script> (лучше в начале)
+function createHiddenWordsElement(text) {
+  const container = document.getElementById('hidden-words');
+  container.innerHTML = ''; // чистим
+
+  // Разбиваем на слова, убираем знаки препинания
+  const words = text
+    .split(/\s+/)
+    .map(w => w.trim())
+    .filter(w => w.length > 0);
+
+  words.forEach(word => {
+    // Очищаем от пунктуации для проверки
+    const clean = word.replace(/[^a-zA-Z0-9а-яА-ЯёЁ]/g, '');
+
+    // Условие «всегда видно»
+    const shouldBeVisible =
+      /[A-ZА-ЯЁ0-9]/.test(clean) ||      // есть заглавная или цифра
+      clean.length === 0;                 // на всякий случай пустые не прячем
+
+    if (shouldBeVisible) {
+      // Просто текст
+      const span = document.createElement('span');
+      span.textContent = word + ' ';
+      span.className = 'always-visible';
+      container.appendChild(span);
+    } else {
+      // Скрытая кнопка-слово
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'secret-word';
+
+      // ★ для каждой буквы (можно заменить на • или ••• и т.д.)
+      btn.textContent = '★'.repeat(clean.length);
+      btn.dataset.real = word; // сохраняем настоящее слово
+
+      btn.onclick = () => {
+        if (!btn.classList.contains('revealed')) {
+          btn.textContent = word;
+          btn.classList.add('revealed');
+        }
+      };
+
+      container.appendChild(btn);
+      // пробел после слова
+      container.appendChild(document.createTextNode(' '));
+    }
+  });
+}
+
 function show() {
   if (!chunks.length) return;
   const c = chunks[idx];
   document.getElementById('text').textContent = c.text;
+  createHiddenWordsElement(c.text);
   document.getElementById('info').textContent = 
     `${idx+1}/${chunks.length} [${c.start.toFixed(1)}–${c.end.toFixed(1)}]`;
 }
