@@ -15,15 +15,16 @@
 </head>
 <body style="margin:10px; font-family:Arial;">
 
-<div style="display:flex; gap:8px; align-items:center; margin-bottom:20px;">
-  <input id="subsUrl" placeholder="URL timedtext https://www.youtube.com/api/timedtext..." style="flex:1; padding:6px;">
-  <button onclick="loadSubs()">Загрузить</button>
-</div>
+
 
 <div style="display:flex; gap:20px; flex-wrap:wrap;">
 
   <!-- Левая колонка: плеер -->
   <div style="flex:1; min-width:320px;">
+    <div style="display:flex; gap:8px; margin-bottom:20px;">
+      <input id="subsUrl" placeholder="URL timedtext https://www.youtube.com/api/timedtext..." style="flex:1; padding:6px;">
+      <button onclick="loadSubs()">Load</button>
+    </div>
     <div id="player" style="width:100%; aspect-ratio:16/9; background:#000;"></div>
   </div>
 
@@ -34,10 +35,7 @@
       субтитры не загружены
     </div>
 
-    <div style="display:flex; flex-wrap:wrap; align-items:center; gap:12px;">
-      <label style="white-space:nowrap;">
-        <input type="checkbox" id="loopChk"> Повторять чанк
-      </label>
+    <div style="display:flex; flex-wrap:wrap; gap:12px;">
       <button onclick="prev()">←</button>
       <button onclick="playNow()">▶</button>
       <button onclick="next()">→</button>
@@ -68,8 +66,7 @@ function loadFromUrl(url) {
   const p = new URLSearchParams(new URL(url).search);
   const vid = p.get('v');
   if (vid) {
-    player.loadVideoById(vid);
-    player.pauseVideo();
+    player.cueVideoById(vid);
   }
 
   fetch(url)
@@ -141,30 +138,13 @@ function playNow() {
       }
     }, 60);
   }, 400);
-  
-  const loop = document.getElementById('loopChk').checked;
-  if (loop) {
-    // Если включён loop — перезапускаем чанк после остановки
-    clearInterval(tmr);
-    tmr = setInterval(() => {
-      if (player.getCurrentTime() >= c.end - 0.1) {
-        player.pauseVideo();
-        clearInterval(tmr);
-        setTimeout(() => playNow(), 300); // небольшая пауза перед перезапуском
-      }
-    }, 60);
-  }
 }
 
 function next() {
-  clearInterval(tmr);
-  document.getElementById('loopChk').checked = false;
   if (idx + 1 < chunks.length) { idx++; show(); playNow(); } 
 }
   
 function prev() { 
-  clearInterval(tmr);
-  document.getElementById('loopChk').checked = false;
   if (idx > 0) { idx--; show(); playNow(); } 
 }
 </script>
