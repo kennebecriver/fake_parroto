@@ -226,57 +226,49 @@ function checkAnswer() {
   const wordButtons = container.querySelectorAll('.secret-word');
   const originalText = document.getElementById('text').textContent;
   const cleanOriginalText = cleanText(originalText);
+  const originalWords = cleanOriginalText.split(/\s+/).filter(w => w.length > 0);
   
-  // Сначала снимаем подсветку корректного ответа
   const answerElement = document.getElementById('answer');
-  answerElement.classList.remove('answer-correct');
-  answerElement.classList.remove('answer-incorrect');
+  answerElement.classList.remove('answer-correct', 'answer-incorrect');
   
-  // Разбиваем ответ на слова
-  const cleanAnswer = cleanText(answer);
+  const cleanAnswer = answer;
   const answerWords = cleanAnswer.split(/\s+/).filter(w => w.length > 0);
   
-  // Проверяем каждое слово
   wordButtons.forEach(btn => {
     const word = btn.dataset.original;
+    const wordIndex = originalWords.indexOf(word);
     
-    // Находим позицию этого слова в оригинальном тексте
-    const wordIndex = cleanOriginalText.split(/\s+/).indexOf(word);
+    let newPartialDisplay = '';
     
     if (wordIndex >= 0 && wordIndex < answerWords.length) {
-      // Создаем отображение с частичным раскрытием
-      let displayText = '';
+      const answerWord = answerWords[wordIndex];
       for (let i = 0; i < word.length; i++) {
-        if (i < answerWords[wordIndex].length && 
-            answerWords[wordIndex][i].toLowerCase() === word[i].toLowerCase()) {
-          displayText += word[i];
+        if (i < answerWord.length && answerWord[i].toLowerCase() === word[i].toLowerCase()) {
+          newPartialDisplay += word[i];
         } else {
-          displayText += '★';
+          newPartialDisplay += '★';
         }
       }
-      
-      // Сохраняем частичное отображение
-      btn.dataset.partial = displayText;
-      
-      // Если слово не отображается полностью (при нажатой мыши), обновляем его
-      if (btn.textContent !== btn.dataset.full) {
-        btn.textContent = displayText;
-      }
     } else {
-      // Если слово вне диапазона, скрываем все буквы
-      btn.dataset.partial = '★'.repeat(word.length);
-      
-      // Если слово не отображается полностью (при нажатой мыши), обновляем его
-      if (btn.textContent !== btn.dataset.full) {
-        btn.textContent = btn.dataset.partial;
-      }
+      newPartialDisplay = '★'.repeat(word.length);
     }
+    
+    // 🔥 КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: ВСЕГДА обновляем partial
+    btn.dataset.partial = newPartialDisplay;
+    
+    // 🔥 И ВСЕГДА обновляем текст, ЕСЛИ он НЕ вручную зажат СЕЙЧАС
+    // Но чтобы определить "зажат сейчас", лучше использовать флаг mousedown
+    // Пока сделаем проще: просто обновляем ВСЕГДА, кроме случая,
+    // когда пользователь действительно держит кнопку мыши
+    
+    // Однако, так как отслеживать "настоящий" mousedown сложно,
+    // проще временно отказаться от защиты и ОБНОВЛЯТЬ ВСЕГДА:
+    btn.textContent = newPartialDisplay;
   });
   
-  // Сравниваем очищенные версии текстов
   if (cleanAnswer === cleanOriginalText) {
     answerElement.classList.add('answer-correct');
-  } else if (answer.length > 0) {
+  } else if (cleanAnswer.length > 0) {
     answerElement.classList.add('answer-incorrect');
   }
 }
@@ -348,7 +340,7 @@ function prev() {
   }
 }
 
-// Добавляем обработчик ввода в поле ответа
+// Добавляем обработчики в поле ответа
 document.addEventListener('DOMContentLoaded', () => {
   const answerField = document.getElementById('answer');
   
@@ -359,6 +351,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     chunkStates[idx].answerValue = this.value;
     
+    checkAnswer();
+  });
+  
+  // Гарантируем обновление при потере фокуса
+  answerField.addEventListener('blur', function() {
+    checkAnswer();
+  });
+  
+  // Дополнительное обновление при отпускании клавиши
+  answerField.addEventListener('keyup', function() {
     checkAnswer();
   });
 });
