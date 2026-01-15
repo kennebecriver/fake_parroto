@@ -124,7 +124,7 @@ function parse(data) {
   let curStart = Math.max(0, words[0].time / 1000 - 0.5);
   for (let j = 1; j < words.length; j++) {
     curText += ' ' + words[j].text;
-    if (words[j].text.endsWith('.')) {
+    if (/[\.\?]$/.test(words[j].text)) {
       const end = words[j].time / 1000 + 0.5;
       chunks.push({start: curStart, end, text: curText.trim()});
       curText = '';
@@ -253,16 +253,8 @@ function checkAnswer() {
       newPartialDisplay = '★'.repeat(word.length);
     }
     
-    // 🔥 КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: ВСЕГДА обновляем partial
     btn.dataset.partial = newPartialDisplay;
     
-    // 🔥 И ВСЕГДА обновляем текст, ЕСЛИ он НЕ вручную зажат СЕЙЧАС
-    // Но чтобы определить "зажат сейчас", лучше использовать флаг mousedown
-    // Пока сделаем проще: просто обновляем ВСЕГДА, кроме случая,
-    // когда пользователь действительно держит кнопку мыши
-    
-    // Однако, так как отслеживать "настоящий" mousedown сложно,
-    // проще временно отказаться от защиты и ОБНОВЛЯТЬ ВСЕГДА:
     btn.textContent = newPartialDisplay;
   });
   
