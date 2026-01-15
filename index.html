@@ -266,7 +266,7 @@ function checkAnswer() {
     btn.textContent = newPartialDisplay;
   });
   
-  if (cleanAnswer === cleanOriginalText) {
+  if (cleanAnswer.toLowerCase() === cleanOriginalText.toLowerCase()) {
     answerElement.classList.add('answer-correct');
   } else if (cleanAnswer.length > 0) {
     answerElement.classList.add('answer-incorrect');
