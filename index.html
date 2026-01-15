@@ -172,7 +172,7 @@ function createHiddenWordsElement(text) {
 
   words.forEach(word => {
     // Очищаем от пунктуации для проверки
-    word.replace(new RegExp('[^a-zA-Z0-9]', 'g'), '');
+    const clean = word.replace(new RegExp('[^a-zA-Z0-9а-яА-ЯёЁ]', 'g'), '');
 
     // Условие «всегда видно»
     const shouldBeVisible =
