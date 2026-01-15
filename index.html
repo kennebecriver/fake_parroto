@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -19,51 +19,43 @@
       font-family: monospace;
       transition: all 0.15s;
     }
-
-    .secret-word.revealed,
-    .secret-word.always-visible {
-      background: #e3f2fd;
-      border-color: #90caf9;
-      cursor: default;
+    .secret-word:hover {
+      background: #f8f9fa;
+      border-color: #ccc;
     }
-
-    .secret-word:hover:not(.revealed):not(.always-visible) {
-      background: #ffe082;
-      border-color: #ffb300;
+    .answer-correct {
+      background-color: #d1e7dd !important;
+      border-color: #198754 !important;
+    }
+    .answer-incorrect {
+      background-color: #f8d7da !important;
+      border-color: #dc3545 !important;
     }
   </style>
 </head>
 <body class="d-flex flex-column min-vh-100 bg-light">
-
   <header class="bg-white border-bottom py-2">
     <div class="container">
       <h1 class="h5 mb-0 text-muted">Fake Parroto</h1>
     </div>
   </header>
-
   <main class="flex-grow-1 py-4">
     <div class="container">
       <div class="row g-4">
-
         <!-- Левая колонка -->
         <div class="col-12 col-md-6 d-flex flex-column gap-3">
           <div id="player" class="ratio ratio-16x9 bg-black rounded"></div>
-
           <div class="d-flex gap-2">
             <input id="subsUrl" class="form-control form-control-sm" placeholder="URL timedtext...">
             <button onclick="loadSubs()" class="btn btn-primary btn-sm px-4">Load</button>
           </div>
         </div>
-
         <!-- Правая колонка -->
         <div class="col-12 col-md-6 d-flex flex-column gap-3">
-
-          <textarea class="form-control form-control-sm" rows="4" placeholder="Type your answer here..."></textarea>
+          <textarea id="answer" class="form-control form-control-sm" rows="4" placeholder="Type your answer here..."></textarea>
           
           <div id="hidden-words" class="border rounded p-3 small bg-white d-flex flex-wrap gap-2" style="min-height: 5rem; line-height: 2.1;"></div>
-
           <div id="text" class="border rounded p-3 small bg-white" style="min-height: 5rem;"></div>
-
           <!-- Единые минималистичные кнопки управления -->
           <div class="d-flex gap-3">
             <button onclick="prev()" class="btn btn-outline-secondary btn-sm">
@@ -76,22 +68,19 @@
               <i class="bi bi-skip-forward-fill"></i>
             </button>
           </div>
-
           <div class="small text-muted">
             <span id="info"></span>
           </div>
-
         </div>
       </div>
     </div>
   </main>
-
   <footer class="border-top py-3 text-center text-muted small mt-auto">
-   Fake Parroto © 2026
+    Fake Parroto © 2026
   </footer>
-
 <script>
 let player, chunks = [], idx = 0, tmr;
+let chunkStates = {}; // Хранилище состояний для каждого фрагмента
 
 window.onYouTubeIframeAPIReady = () => {
   player = new YT.Player('player', {
@@ -112,7 +101,6 @@ function loadFromUrl(url) {
   if (vid) {
     player.cueVideoById(vid);
   }
-
   fetch(url)
     .then(r => r.json())
     .then(data => parse(data))
@@ -125,18 +113,15 @@ function parse(data) {
     if (!e.tStartMs || !e.segs) return;
     const base = e.tStartMs;
     e.segs.forEach(s => {
-      if (!s.utf8?.trim() || s.utf8 === '\n' || /^\[.*\]$/.test(s.utf8.trim())) return;
+      if (!s.utf8?.trim() || s.utf8 === '\n' || /^\$\$ .* \$\$/.test(s.utf8.trim())) return;
       const time = base + (s.tOffsetMs || 0);
       words.push({text: s.utf8.trim(), time});
     });
   });
-
   if (!words.length) return;
-
   chunks = [];
   let curText = words[0].text;
-  let curStart = words[0].time / 1000 - 0.5;
-
+  let curStart = Math.max(0, words[0].time / 1000 - 0.5);
   for (let j = 1; j < words.length; j++) {
     curText += ' ' + words[j].text;
     if (words[j].text.endsWith('.')) {
@@ -146,7 +131,6 @@ function parse(data) {
       curStart = (j + 1 < words.length) ? words[j + 1].time / 1000 : end;
     }
   }
-
   if (curText.trim()) {
     chunks.push({
       start: curStart,
@@ -154,31 +138,37 @@ function parse(data) {
       text: curText.trim()
     });
   }
-
+  
+  // Инициализируем состояния для всех фрагментов
+  chunks.forEach((chunk, i) => {
+    chunkStates[i] = {
+      answerValue: '',
+      allRevealed: false
+    };
+  });
+  
   idx = 0;
   show();
 }
 
-// Добавь эту функцию где-нибудь в <script> (лучше в начале)
+// Очистка текста от всего, кроме букв и цифр
+function cleanText(text) {
+  return text.replace(/[^a-zA-Z0-9\s]/g, '').trim();
+}
+
+// Создаем элемент со скрытыми словами
 function createHiddenWordsElement(text) {
   const container = document.getElementById('hidden-words');
   container.innerHTML = ''; // чистим
-
-  // Разбиваем на слова, убираем знаки препинания
-  const words = text
-    .split(/\s+/)
-    .map(w => w.trim())
-    .filter(w => w.length > 0);
-
+  
+  // Очищаем текст от всего, кроме букв и цифр и разбиваем на слова
+  const cleanTextContent = cleanText(text);
+  const words = cleanTextContent.split(/\s+/).filter(w => w.length > 0);
+  
   words.forEach(word => {
-    // Очищаем от пунктуации для проверки
-    const clean = word.replace(new RegExp('[^a-zA-Z0-9а-яА-ЯёЁ]', 'g'), '');
-
     // Условие «всегда видно»
-    const shouldBeVisible =
-      /[A-ZА-ЯЁ0-9]/.test(clean) ||      // есть заглавная или цифра
-      clean.length === 0;                 // на всякий случай пустые не прячем
-
+    const shouldBeVisible = /[A-Z0-9]/.test(word) && word.length > 1;
+    
     if (shouldBeVisible) {
       // Просто текст
       const span = document.createElement('span');
@@ -190,18 +180,38 @@ function createHiddenWordsElement(text) {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'secret-word';
-
-      // ★ для каждой буквы (можно заменить на • или ••• и т.д.)
-      btn.textContent = '★'.repeat(clean.length);
-      btn.dataset.real = word; // сохраняем настоящее слово
-
-      btn.onclick = () => {
-        if (!btn.classList.contains('revealed')) {
-          btn.textContent = word;
-          btn.classList.add('revealed');
+      btn.dataset.original = word;
+      btn.dataset.partial = '★'.repeat(word.length); // Частичное отображение
+      btn.dataset.full = word; // Полное отображение
+      
+      // Устанавливаем текст звездочками
+      btn.textContent = btn.dataset.partial;
+      
+      // Обработчик нажатия мыши
+      btn.addEventListener('mousedown', function(e) {
+        // Показываем полное слово только если есть звездочки
+        if (this.textContent.includes('★')) {
+          this.textContent = this.dataset.full;
         }
-      };
-
+        e.preventDefault(); // Предотвращаем выделение текста
+      });
+      
+      // Обработчик отпускания мыши
+      btn.addEventListener('mouseup', function() {
+        // Возвращаем частичное отображение только если было полное
+        if (this.textContent === this.dataset.full) {
+          this.textContent = this.dataset.partial;
+        }
+      });
+      
+      // Обработчик выхода мыши за пределы элемента
+      btn.addEventListener('mouseout', function() {
+        // Возвращаем частичное отображение только если было полное
+        if (this.textContent === this.dataset.full) {
+          this.textContent = this.dataset.partial;
+        }
+      });
+      
       container.appendChild(btn);
       // пробел после слова
       container.appendChild(document.createTextNode(' '));
@@ -209,12 +219,85 @@ function createHiddenWordsElement(text) {
   });
 }
 
+// Проверяем введенный ответ
+function checkAnswer() {
+  const answer = document.getElementById('answer').value;
+  const container = document.getElementById('hidden-words');
+  const wordButtons = container.querySelectorAll('.secret-word');
+  const originalText = document.getElementById('text').textContent;
+  const cleanOriginalText = cleanText(originalText);
+  
+  // Сначала снимаем подсветку корректного ответа
+  const answerElement = document.getElementById('answer');
+  answerElement.classList.remove('answer-correct');
+  answerElement.classList.remove('answer-incorrect');
+  
+  // Разбиваем ответ на слова
+  const cleanAnswer = cleanText(answer);
+  const answerWords = cleanAnswer.split(/\s+/).filter(w => w.length > 0);
+  
+  // Проверяем каждое слово
+  wordButtons.forEach(btn => {
+    const word = btn.dataset.original;
+    
+    // Находим позицию этого слова в оригинальном тексте
+    const wordIndex = cleanOriginalText.split(/\s+/).indexOf(word);
+    
+    if (wordIndex >= 0 && wordIndex < answerWords.length) {
+      // Создаем отображение с частичным раскрытием
+      let displayText = '';
+      for (let i = 0; i < word.length; i++) {
+        if (i < answerWords[wordIndex].length && 
+            answerWords[wordIndex][i].toLowerCase() === word[i].toLowerCase()) {
+          displayText += word[i];
+        } else {
+          displayText += '★';
+        }
+      }
+      
+      // Сохраняем частичное отображение
+      btn.dataset.partial = displayText;
+      
+      // Если слово не отображается полностью (при нажатой мыши), обновляем его
+      if (btn.textContent !== btn.dataset.full) {
+        btn.textContent = displayText;
+      }
+    } else {
+      // Если слово вне диапазона, скрываем все буквы
+      btn.dataset.partial = '★'.repeat(word.length);
+      
+      // Если слово не отображается полностью (при нажатой мыши), обновляем его
+      if (btn.textContent !== btn.dataset.full) {
+        btn.textContent = btn.dataset.partial;
+      }
+    }
+  });
+  
+  // Сравниваем очищенные версии текстов
+  if (cleanAnswer === cleanOriginalText) {
+    answerElement.classList.add('answer-correct');
+  } else if (answer.length > 0) {
+    answerElement.classList.add('answer-incorrect');
+  }
+}
+
 function show() {
   if (!chunks.length) return;
   const c = chunks[idx];
+  
   document.getElementById('text').textContent = c.text;
   createHiddenWordsElement(c.text);
-  document.getElementById('info').textContent = 
+  
+  // Восстанавливаем значение поля ответа из состояния
+  const answerField = document.getElementById('answer');
+  answerField.value = chunkStates[idx]?.answerValue || '';
+  
+  // Если есть сохраненное значение, проверяем ответ
+  if (answerField.value) {
+    checkAnswer();
+  }
+  
+  document.getElementById('info').textContent =
     `${idx+1}/${chunks.length} [${c.start.toFixed(1)}–${c.end.toFixed(1)}]`;
 }
 
@@ -236,13 +319,49 @@ function playNow() {
 }
 
 function next() {
-  if (idx + 1 < chunks.length) { idx++; show(); playNow(); } 
+  if (idx + 1 < chunks.length) { 
+    
+    // Сохраняем текущее значение поля ответа
+    if (!chunkStates[idx]) {
+      chunkStates[idx] = {answerValue: '', allRevealed: false};
+    }
+    chunkStates[idx].answerValue = document.getElementById('answer').value;
+    
+    idx++; 
+    show(); 
+    playNow(); 
+  }
 }
+
+function prev() {
+  if (idx > 0) { 
+    
+    // Сохраняем текущее значение поля ответа
+    if (!chunkStates[idx]) {
+      chunkStates[idx] = {answerValue: '', allRevealed: false};
+    }
+    chunkStates[idx].answerValue = document.getElementById('answer').value;
+    
+    idx--; 
+    show(); 
+    playNow(); 
+  }
+}
+
+// Добавляем обработчик ввода в поле ответа
+document.addEventListener('DOMContentLoaded', () => {
+  const answerField = document.getElementById('answer');
   
-function prev() { 
-  if (idx > 0) { idx--; show(); playNow(); } 
-}
+  answerField.addEventListener('input', function() {
+    // Сохраняем значение при каждом изменении
+    if (!chunkStates[idx]) {
+      chunkStates[idx] = {answerValue: '', allRevealed: false};
+    }
+    chunkStates[idx].answerValue = this.value;
+    
+    checkAnswer();
+  });
+});
 </script>
-  
 </body>
 </html>
