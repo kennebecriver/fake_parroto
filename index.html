@@ -1,382 +1,437 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fake Parroto</title>
-	<script src="https://www.youtube.com/iframe_api"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-white text-slate-800 font-sans min-h-screen flex flex-col">
-
-    <header class="bg-slate-100 border-b border-slate-200 py-4 px-6">
-        <div class="container mx-auto max-w-6xl">
-            <h1 class="text-xl font-bold text-slate-700">Fake Parroto</h1>
-        </div>
-    </header>
-
-    <main class="flex-grow container mx-auto max-w-6xl p-6">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full">
-            
-            <div class="lg:col-span-5 flex flex-col">
-                <div class="bg-black rounded-xl aspect-video w-full flex items-center justify-center text-white shadow-sm mb-4">
-                    <div id="player" class="text-center">
-                        <p class="text-2xl font-light tracking-wide">YouTube IFrame Player</p>
-                    </div>
-                </div>
-
-                <div class="flex gap-2">
-                    <input id="subsUrl" type="text" 
-                           placeholder="Paste timedtext URL here..." 
-                           class="flex-grow border border-slate-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 placeholder-slate-400 transition-shadow shadow-sm">
-                    <button onclick="loadSubs()" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium px-6 py-2 rounded-lg text-sm transition-colors shadow-sm">
-                        Load
-                    </button>
-                </div>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Fake Parroto</title>
+        <script src="https://www.youtube.com/iframe_api"></script>
+        <script src="https://cdn.tailwindcss.com"></script>
+    </head>
+    <body class="bg-white text-slate-800 font-sans min-h-screen flex flex-col">
+        <header class="bg-slate-100 border-b border-slate-200 py-4 px-6">
+            <div class="container mx-auto max-w-6xl">
+                <h1 class="text-sm text-slate-500 font-medium">Fake Parroto</h1>
             </div>
+        </header>
 
-            <div class="lg:col-span-5 flex flex-col gap-4">
-                
-                <div class="border border-slate-300 rounded-lg p-3 flex items-center justify-between bg-white shadow-sm">
+        <main class="flex-grow container mx-auto max-w-6xl p-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full">
+                <div class="lg:col-span-5 flex flex-col">
+                    <div
+                        class="bg-black rounded-xl aspect-video w-full flex items-center justify-center text-white shadow-sm mb-4"
+                    >
+                        <div id="player" class="text-center">
+                            <p class="text-2xl font-light tracking-wide">YouTube IFrame Player</p>
+                        </div>
+                    </div>
+
                     <div class="flex gap-2">
-                        <button onclick="prev()" class="p-1.5 border border-slate-200 rounded hover:bg-slate-50 text-slate-600 transition">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 19 2 12 11 5 11 19"></polygon><polygon points="22 19 13 12 22 5 22 19"></polygon></svg>
-                        </button>
-                        <button onclick="playNow()" class="p-1.5 border border-slate-200 rounded hover:bg-slate-50 text-slate-600 transition">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                        </button>
-                        <button onclick="next()" class="p-1.5 border border-slate-200 rounded hover:bg-slate-50 text-slate-600 transition">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 19 22 12 13 5 13 19"></polygon><polygon points="2 19 11 12 2 5 2 19"></polygon></svg>
+                        <input
+                            id="subsUrl"
+                            type="text"
+                            placeholder="Paste timedtext URL here..."
+                            class="flex-grow border border-slate-300  px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 placeholder-slate-400 transition-shadow shadow-sm"
+                        />
+                        <button
+                            onclick="loadSubs()"
+                            class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium px-6 py-2  text-sm transition-colors shadow-sm"
+                        >
+                            Load
                         </button>
                     </div>
-                    
-                    <span id="info" class="text-xs text-slate-400 font-medium">Small text here...</span>
-
-<button id="toggle-btn" class="border border-slate-300 px-3 py-1 rounded text-xs font-medium hover:bg-slate-50 transition select-none active:scale-95">
-            Original text
-        </button>
-    </div>
-
-    <div id="collapse-content" class="hidden" >
-        <div class="min-h-[130px] w-full border border-blue-200 bg-blue-50 rounded-lg p-4 shadow-inner">
-            <p id="text" class="text-sm text-blue-800 font-mono mb-2">Extra Collapsed Field</p>
-        </div>
-    </div>
-
-                <textarea id="answer"
-                    rows="5" 
-                    placeholder="Input 4 rows text area. Type your text here." 
-                    class="w-full border border-slate-300 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 placeholder-slate-400 resize-none shadow-sm"
-                ></textarea>
-
-                <div id="hidden-words" class="w-full flex-grow border border-slate-300 rounded-lg p-4 bg-white shadow-sm min-h-[160px]">
-                    <p class="text-sm text-slate-500 font-mono">Output field. 5 rows. class="card card-body"</p>
                 </div>
 
+                <div class="lg:col-span-5 flex flex-col gap-4">
+                    <div
+                        class="border border-slate-300  p-3 flex items-center justify-between bg-white shadow-sm"
+                    >
+                        <div class="flex gap-2">
+                            <button
+                                onclick="prev()"
+                                class="p-1.5 border border-slate-200  hover:bg-slate-50 text-slate-600 transition"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+                                    <polygon points="11 19 2 12 11 5 11 19"></polygon>
+                                    <polygon points="22 19 13 12 22 5 22 19"></polygon>
+                                </svg>
+                            </button>
+                            <button
+                                onclick="playNow()"
+                                class="p-1.5 border border-slate-200  hover:bg-slate-50 text-slate-600 transition"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+                                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                                </svg>
+                            </button>
+                            <button
+                                onclick="next()"
+                                class="p-1.5 border border-slate-200  hover:bg-slate-50 text-slate-600 transition"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+                                    <polygon points="13 19 22 12 13 5 13 19"></polygon>
+                                    <polygon points="2 19 11 12 2 5 2 19"></polygon>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <span id="info" class="text-xs text-slate-400 font-medium"></span>
+
+                        <button
+                            id="toggle-btn"
+                            class="border border-slate-300 px-3 py-1 rounded text-xs font-medium hover:bg-slate-50 transition select-none active:scale-95"
+                        >
+                            Original text
+                        </button>
+                    </div>
+
+                    <div id="collapse-content" class="hidden">
+                        <div class="min-h-[130px] w-full border border-blue-200 bg-blue-50 p-4 shadow-inner">
+                            <p id="text" class="text-sm text-blue-800 font-mono mb-2"></p>
+                        </div>
+                    </div>
+
+                    <textarea
+                        id="answer"
+                        rows="3"
+                        placeholder=""
+                        class="w-full border border-slate-300  p-3 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 placeholder-slate-400 resize-none shadow-sm"
+                    ></textarea>
+
+                    <div
+                        id="hidden-words"
+                        class="gap-y-5 w-full flex-grow border border-slate-300 p-4 bg-white shadow-sm min-h-[200px]"
+                    >
+                        <p class="text-sm text-slate-500 font-mono"></p>
+                    </div>
+					
+					
+                </div>
             </div>
-        </div>
-    </main>
+        </main>
 
-    <footer class="bg-slate-100 border-t border-slate-200 py-4 mt-auto">
-        <div class="container mx-auto max-w-6xl px-6 text-center lg:text-left">
-            <p class="text-sm text-slate-500 font-medium">Fake Parroto © 2026 (Footer)</p>
-        </div>
-    </footer>
+        <footer class="bg-slate-100 border-t border-slate-200 py-4 mt-auto">
+            <div class="container mx-auto max-w-6xl px-6 text-center lg:text-left">
+                <p class="text-sm text-slate-500 font-medium">Fake Parroto © 2026</p>
+            </div>
+        </footer>
 
+        <script>
+            let player,
+                chunks = [],
+                idx = 0,
+                tmr;
+            let chunkStates = {};
 
-<script>
-let player, chunks = [], idx = 0, tmr;
-let chunkStates = {}; // Хранилище состояний для каждого фрагмента
+            window.onYouTubeIframeAPIReady = () => {
+                player = new YT.Player("player", {
+                    height: "100%",
+                    width: "100%",
+                    playerVars: { playsinline: 1, enablejsapi: 1, rel: 0 },
+                });
+            };
 
-window.onYouTubeIframeAPIReady = () => {
-  player = new YT.Player('player', {
-    height: '100%',
-    width: '100%',
-    playerVars: { playsinline:1, enablejsapi:1, rel:0 }
-  });
-};
+            function loadSubs() {
+                const url = document.getElementById("subsUrl").value.trim();
+                if (url) loadFromUrl(url);
+            }
 
-function loadSubs() {
-  const url = document.getElementById('subsUrl').value.trim();
-  if (url) loadFromUrl(url);
-}
+            function loadFromUrl(url) {
+                const p = new URLSearchParams(new URL(url).search);
+                const vid = p.get("v");
+                if (vid) {
+                    player.cueVideoById(vid);
+                }
+                fetch(url)
+                    .then((r) => r.json())
+                    .then((data) => parse(data))
+                    .catch((e) => alert("Ошибка загрузки: " + e.message));
+            }
 
-function loadFromUrl(url) {
-  const p = new URLSearchParams(new URL(url).search);
-  const vid = p.get('v');
-  if (vid) {
-    player.cueVideoById(vid);
-  }
-  fetch(url)
-    .then(r => r.json())
-    .then(data => parse(data))
-    .catch(e => alert('Ошибка загрузки: ' + e.message));
-}
+            function parse(data) {
+                const words = [];
+                (data.events || []).forEach((e) => {
+                    if (!e.tStartMs || !e.segs) return;
+                    const base = e.tStartMs;
+                    e.segs.forEach((s) => {
+                        if (!s.utf8?.trim() || s.utf8 === "\n" || /^\$\$ .* \$\$/.test(s.utf8.trim())) return;
+                        const time = base + (s.tOffsetMs || 0);
+                        words.push({ text: s.utf8.trim(), time });
+                    });
+                });
+                if (!words.length) return;
+                chunks = [];
+                let curText = words[0].text;
+                let curStart = Math.max(0, words[0].time / 1000 - 0.5);
+                for (let j = 1; j < words.length; j++) {
+                    curText += " " + words[j].text;
+                    if (/[\.\?]$/.test(words[j].text)) {
+                        const end = words[j].time / 1000 + 0.5;
+                        chunks.push({ start: curStart, end, text: curText.trim() });
+                        curText = "";
+                        curStart = j + 1 < words.length ? words[j + 1].time / 1000 : end;
+                    }
+                }
+                if (curText.trim()) {
+                    chunks.push({
+                        start: curStart,
+                        end: words[words.length - 1].time / 1000 + 1.2,
+                        text: curText.trim(),
+                    });
+                }
 
-function parse(data) {
-  const words = [];
-  (data.events || []).forEach(e => {
-    if (!e.tStartMs || !e.segs) return;
-    const base = e.tStartMs;
-    e.segs.forEach(s => {
-      if (!s.utf8?.trim() || s.utf8 === '\n' || /^\$\$ .* \$\$/.test(s.utf8.trim())) return;
-      const time = base + (s.tOffsetMs || 0);
-      words.push({text: s.utf8.trim(), time});
-    });
-  });
-  if (!words.length) return;
-  chunks = [];
-  let curText = words[0].text;
-  let curStart = Math.max(0, words[0].time / 1000 - 0.5);
-  for (let j = 1; j < words.length; j++) {
-    curText += ' ' + words[j].text;
-    if (/[\.\?]$/.test(words[j].text)) {
-      const end = words[j].time / 1000 + 0.5;
-      chunks.push({start: curStart, end, text: curText.trim()});
-      curText = '';
-      curStart = (j + 1 < words.length) ? words[j + 1].time / 1000 : end;
-    }
-  }
-  if (curText.trim()) {
-    chunks.push({
-      start: curStart,
-      end: (words[words.length - 1].time / 1000) + 1.2,
-      text: curText.trim()
-    });
-  }
-  
-  // Инициализируем состояния для всех фрагментов
-  chunks.forEach((chunk, i) => {
-    chunkStates[i] = {
-      answerValue: '',
-      allRevealed: false
-    };
-  });
-  
-  idx = 0;
-  show();
-}
+                // Инициализируем состояния для всех фрагментов
+                chunks.forEach((chunk, i) => {
+                    chunkStates[i] = {
+                        answerValue: "",
+                        allRevealed: false,
+                    };
+                });
 
-// Очистка текста от всего, кроме букв и цифр
-function cleanText(text) {
-  return text.replace(/[^a-zA-Z0-9\s]/g, '').trim();
-}
+                idx = 0;
+                show();
+            }
 
-// Создаем элемент со скрытыми словами
-function createHiddenWordsElement(text) {
-  const container = document.getElementById('hidden-words');
-  container.innerHTML = ''; // чистим
-  
-  // Очищаем текст от всего, кроме букв и цифр и разбиваем на слова
-  const cleanTextContent = cleanText(text);
-  const words = cleanTextContent.split(/\s+/).filter(w => w.length > 0);
-  
-  words.forEach(word => {
-    // Условие «всегда видно»
-    const shouldBeVisible = /[A-Z0-9]/.test(word) && word.length > 1;
-    
-    if (shouldBeVisible) {
-      // Просто текст
-      const span = document.createElement('span');
-      span.textContent = word + ' ';
-      span.className = 'always-visible';
-      container.appendChild(span);
-    } else {
-      // Скрытая кнопка-слово
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'secret-word';
-      btn.dataset.original = word;
-      btn.dataset.partial = '★'.repeat(word.length); // Частичное отображение
-      btn.dataset.full = word; // Полное отображение
-      
-      // Устанавливаем текст звездочками
-      btn.textContent = btn.dataset.partial;
-      
-      // Обработчик нажатия мыши
-      btn.addEventListener('mousedown', function(e) {
-        // Показываем полное слово только если есть звездочки
-        if (this.textContent.includes('★')) {
-          this.textContent = this.dataset.full;
-        }
-        e.preventDefault(); // Предотвращаем выделение текста
-      });
-      
-      // Обработчик отпускания мыши
-      btn.addEventListener('mouseup', function() {
-        // Возвращаем частичное отображение только если было полное
-        if (this.textContent === this.dataset.full) {
-          this.textContent = this.dataset.partial;
-        }
-      });
-      
-      // Обработчик выхода мыши за пределы элемента
-      btn.addEventListener('mouseout', function() {
-        // Возвращаем частичное отображение только если было полное
-        if (this.textContent === this.dataset.full) {
-          this.textContent = this.dataset.partial;
-        }
-      });
-      
-      container.appendChild(btn);
-      // пробел после слова
-      container.appendChild(document.createTextNode(' '));
-    }
-  });
-}
+            function cleanText(text) {
+                return text.replace(/[^a-zA-Z0-9\s]/g, "").trim();
+            }
 
-// Проверяем введенный ответ
-function checkAnswer() {
-  const answer = document.getElementById('answer').value;
-  const container = document.getElementById('hidden-words');
-  const wordButtons = container.querySelectorAll('.secret-word');
-  const originalText = document.getElementById('text').textContent;
-  const cleanOriginalText = cleanText(originalText);
-  const originalWords = cleanOriginalText.split(/\s+/).filter(w => w.length > 0);
-  
-  const answerElement = document.getElementById('answer');
-  answerElement.classList.remove('answer-correct', 'answer-incorrect');
-  
-  const cleanAnswer = answer;
-  const answerWords = cleanAnswer.split(/\s+/).filter(w => w.length > 0);
-  
-  wordButtons.forEach(btn => {
-    const word = btn.dataset.original;
-    const wordIndex = originalWords.indexOf(word);
-    
-    let newPartialDisplay = '';
-    
-    if (wordIndex >= 0 && wordIndex < answerWords.length) {
-      const answerWord = answerWords[wordIndex];
-      for (let i = 0; i < word.length; i++) {
-        if (i < answerWord.length && answerWord[i].toLowerCase() === word[i].toLowerCase()) {
-          newPartialDisplay += word[i];
-        } else {
-          newPartialDisplay += '★';
-        }
-      }
-    } else {
-      newPartialDisplay = '★'.repeat(word.length);
-    }
-    
-    btn.dataset.partial = newPartialDisplay;
-    
-    btn.textContent = newPartialDisplay;
-  });
-  
-  if (cleanAnswer.toLowerCase() === cleanOriginalText.toLowerCase()) {
-    answerElement.classList.add('answer-correct');
-  } else if (cleanAnswer.length > 0) {
-    answerElement.classList.add('answer-incorrect');
-  }
-}
+            function createHiddenWordsElement(text) {
+                const container = document.getElementById("hidden-words");
+                container.innerHTML = ""; // чистим
 
-function show() {
-  if (!chunks.length) return;
-  const c = chunks[idx];
-  
-  document.getElementById('text').textContent = c.text;
-  createHiddenWordsElement(c.text);
-  
-  // Восстанавливаем значение поля ответа из состояния
-  const answerField = document.getElementById('answer');
-  answerField.value = chunkStates[idx]?.answerValue || '';
-  
-  // Если есть сохраненное значение, проверяем ответ
-  if (answerField.value) {
-    checkAnswer();
-  }
-  
-  document.getElementById('info').textContent =
-    `${idx+1}/${chunks.length} [${c.start.toFixed(1)}–${c.end.toFixed(1)}]`;
-}
+                // Очищаем текст от всего, кроме букв и цифр и разбиваем на слова
+                const cleanTextContent = cleanText(text);
+                const words = cleanTextContent.split(/\s+/).filter((w) => w.length > 0);
 
-function playNow() {
-  if (!chunks.length || !player) return;
-  const c = chunks[idx];
-  player.pauseVideo();
-  player.seekTo(c.start, true);
-  setTimeout(() => {
-    player.playVideo();
-    clearInterval(tmr);
-    tmr = setInterval(() => {
-      if (player.getCurrentTime() >= c.end - 0.1) {
-        player.pauseVideo();
-        clearInterval(tmr);
-      }
-    }, 60);
-  }, 400);
-}
+                words.forEach((word) => {
+                    // Условие «всегда видно»
+                    const shouldBeVisible = /[A-Z0-9]/.test(word) && word.length > 1;
 
-function next() {
-  if (idx + 1 < chunks.length) { 
-    
-    // Сохраняем текущее значение поля ответа
-    if (!chunkStates[idx]) {
-      chunkStates[idx] = {answerValue: '', allRevealed: false};
-    }
-    chunkStates[idx].answerValue = document.getElementById('answer').value;
-    
-    idx++; 
-    show(); 
-    playNow(); 
-  }
-}
+                    if (shouldBeVisible) {
+                        // Просто текст
 
-function prev() {
-  if (idx > 0) { 
-    
-    // Сохраняем текущее значение поля ответа
-    if (!chunkStates[idx]) {
-      chunkStates[idx] = {answerValue: '', allRevealed: false};
-    }
-    chunkStates[idx].answerValue = document.getElementById('answer').value;
-    
-    idx--; 
-    show(); 
-    playNow(); 
-  }
-}
+                        const btnVisible = document.createElement("button");
+                        btnVisible.textContent = word;
+                        btnVisible.className =
+                            "inline-flex bg-slate-800 py-1 px-1 border border-white text-center text-sm text-white transition-all shadow-sm hover:shadow focus:bg-slate-700";
+                        btnVisible.type = "button";
+                        container.appendChild(btnVisible);
+                        container.appendChild(document.createTextNode(" "));
 
-// Добавляем обработчики в поле ответа
-document.addEventListener('DOMContentLoaded', () => {
-  const answerField = document.getElementById('answer');
-  
-  answerField.addEventListener('input', function() {
-    // Сохраняем значение при каждом изменении
-    if (!chunkStates[idx]) {
-      chunkStates[idx] = {answerValue: '', allRevealed: false};
-    }
-    chunkStates[idx].answerValue = this.value;
-    
-    checkAnswer();
-  });
-  
-  // Гарантируем обновление при потере фокуса
-  answerField.addEventListener('blur', function() {
-    checkAnswer();
-  });
-  
-  // Дополнительное обновление при отпускании клавиши
-  answerField.addEventListener('keyup', function() {
-    checkAnswer();
-  });
-  
-  
-});
+                    } else {
+                        const btnSecret = document.createElement("button");
+                        btnSecret.type = "button";
+                        btnSecret.className =
+                            "secret-word inline-flex bg-slate-800 py-1 px-1 border border-white text-center text-sm text-white transition-all shadow-sm hover:shadow focus:bg-slate-700";
+                        btnSecret.dataset.original = word;
+                        btnSecret.dataset.partial = "★".repeat(word.length);
+                        btnSecret.dataset.full = word;
 
-    const toggleBtn = document.getElementById('toggle-btn');
-    const collapseContent = document.getElementById('collapse-content');
+                        btnSecret.textContent = btnSecret.dataset.partial;
 
-    toggleBtn.addEventListener('click', () => {
-        // Переключаем класс hidden, который скрывает/показывает элемент
-        collapseContent.classList.toggle('hidden');
-        
-        // Опционально: меняем стиль кнопки, чтобы показать, что она активна
-        toggleBtn.classList.toggle('bg-slate-100');
-        toggleBtn.classList.toggle('border-slate-400');
-    });
-</script>
+                        btnSecret.addEventListener("mousedown", function (e) {
+                            // Показываем полное слово только если есть звездочки
+                            if (this.textContent.includes("★")) {
+                                this.textContent = this.dataset.full;
+                            }
+                            e.preventDefault(); // Предотвращаем выделение текста
+                        });
 
-</body>
+                        btnSecret.addEventListener("mouseup", function () {
+                            // Возвращаем частичное отображение только если было полное
+                            if (this.textContent === this.dataset.full) {
+                                this.textContent = this.dataset.partial;
+                            }
+                        });
+
+                        btnSecret.addEventListener("mouseout", function () {
+                            // Возвращаем частичное отображение только если было полное
+                            if (this.textContent === this.dataset.full) {
+                                this.textContent = this.dataset.partial;
+                            }
+                        });
+
+                        container.appendChild(btnSecret);
+                        container.appendChild(document.createTextNode(" "));
+                    }
+                });
+            }
+
+            function checkAnswer() {
+                const answer = document.getElementById("answer").value;
+                const container = document.getElementById("hidden-words");
+                const wordButtons = container.querySelectorAll(".secret-word");
+                const originalText = document.getElementById("text").textContent;
+                const cleanOriginalText = cleanText(originalText);
+                const originalWords = cleanOriginalText.split(/\s+/).filter((w) => w.length > 0);
+
+                const answerElement = document.getElementById("answer");
+                answerElement.classList.remove("answer-correct", "answer-incorrect");
+
+                const cleanAnswer = answer;
+                const answerWords = cleanAnswer.split(/\s+/).filter((w) => w.length > 0);
+
+                wordButtons.forEach((btn) => {
+                    const word = btn.dataset.original;
+                    const wordIndex = originalWords.indexOf(word);
+
+                    let newPartialDisplay = "";
+
+                    if (wordIndex >= 0 && wordIndex < answerWords.length) {
+                        const answerWord = answerWords[wordIndex];
+                        for (let i = 0; i < word.length; i++) {
+                            if (i < answerWord.length && answerWord[i].toLowerCase() === word[i].toLowerCase()) {
+                                newPartialDisplay += word[i];
+                            } else {
+                                newPartialDisplay += "★";
+                            }
+                        }
+                    } else {
+                        newPartialDisplay = "★".repeat(word.length);
+                    }
+
+                    btn.dataset.partial = newPartialDisplay;
+
+                    btn.textContent = newPartialDisplay;
+                });
+
+                if (cleanAnswer.toLowerCase() === cleanOriginalText.toLowerCase()) {
+                    answerElement.classList.add("answer-correct");
+                } else if (cleanAnswer.length > 0) {
+                    answerElement.classList.add("answer-incorrect");
+                }
+            }
+
+            function show() {
+                if (!chunks.length) return;
+                const c = chunks[idx];
+
+                document.getElementById("text").textContent = c.text;
+                createHiddenWordsElement(c.text);
+
+                // Восстанавливаем значение поля ответа из состояния
+                const answerField = document.getElementById("answer");
+                answerField.value = chunkStates[idx]?.answerValue || "";
+
+                // Если есть сохраненное значение, проверяем ответ
+                if (answerField.value) {
+                    checkAnswer();
+                }
+
+                document.getElementById("info").textContent =
+                    `${idx + 1}/${chunks.length} [${c.start.toFixed(1)}–${c.end.toFixed(1)}]`;
+            }
+
+            function playNow() {
+                if (!chunks.length || !player) return;
+                const c = chunks[idx];
+                player.pauseVideo();
+                player.seekTo(c.start, true);
+                setTimeout(() => {
+                    player.playVideo();
+                    clearInterval(tmr);
+                    tmr = setInterval(() => {
+                        if (player.getCurrentTime() >= c.end - 0.1) {
+                            player.pauseVideo();
+                            clearInterval(tmr);
+                        }
+                    }, 60);
+                }, 400);
+            }
+
+            function next() {
+                if (idx + 1 < chunks.length) {
+                    // Сохраняем текущее значение поля ответа
+                    if (!chunkStates[idx]) {
+                        chunkStates[idx] = { answerValue: "", allRevealed: false };
+                    }
+                    chunkStates[idx].answerValue = document.getElementById("answer").value;
+
+                    idx++;
+                    show();
+                    playNow();
+                }
+            }
+
+            function prev() {
+                if (idx > 0) {
+                    // Сохраняем текущее значение поля ответа
+                    if (!chunkStates[idx]) {
+                        chunkStates[idx] = { answerValue: "", allRevealed: false };
+                    }
+                    chunkStates[idx].answerValue = document.getElementById("answer").value;
+
+                    idx--;
+                    show();
+                    playNow();
+                }
+            }
+
+            document.addEventListener("DOMContentLoaded", () => {
+                const answerField = document.getElementById("answer");
+
+                answerField.addEventListener("input", function () {
+                    // Сохраняем значение при каждом изменении
+                    if (!chunkStates[idx]) {
+                        chunkStates[idx] = { answerValue: "", allRevealed: false };
+                    }
+                    chunkStates[idx].answerValue = this.value;
+
+                    checkAnswer();
+                });
+
+                // Гарантируем обновление при потере фокуса
+                answerField.addEventListener("blur", function () {
+                    checkAnswer();
+                });
+
+                // Дополнительное обновление при отпускании клавиши
+                answerField.addEventListener("keyup", function () {
+                    checkAnswer();
+                });
+            });
+
+            const toggleBtn = document.getElementById("toggle-btn");
+            const collapseContent = document.getElementById("collapse-content");
+
+            toggleBtn.addEventListener("click", () => {
+                // Переключаем класс hidden, который скрывает/показывает элемент
+                collapseContent.classList.toggle("hidden");
+
+                // Опционально: меняем стиль кнопки, чтобы показать, что она активна
+                toggleBtn.classList.toggle("bg-slate-100");
+                toggleBtn.classList.toggle("border-slate-400");
+            });
+        </script>
+    </body>
 </html>
