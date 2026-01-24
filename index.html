@@ -171,7 +171,7 @@
                 if (vid) {
                     player.cueVideoById(vid);
                 }
-                fetch(url)
+                fetch(url+"&kind=asr")
                     .then((r) => r.json())
                     .then((data) => parse(data))
                     .catch((e) => alert("Ошибка загрузки: " + e.message));
