@@ -260,6 +260,8 @@
                         btnSecret.textContent = btnSecret.dataset.partial;
 
                         btnSecret.addEventListener("mousedown", function (e) {
+							this.style.width = `${this.offsetWidth}px`;
+                            this.style.flexShrink = '0';
                             // Показываем полное слово только если есть звездочки
                             if (this.textContent.includes("★")) {
                                 this.textContent = this.dataset.full;
@@ -268,6 +270,8 @@
                         });
 
                         btnSecret.addEventListener("mouseup", function () {
+							this.style.width = '';
+                            this.style.flexShrink = '';
                             // Возвращаем частичное отображение только если было полное
                             if (this.textContent === this.dataset.full) {
                                 this.textContent = this.dataset.partial;
@@ -275,6 +279,8 @@
                         });
 
                         btnSecret.addEventListener("mouseout", function () {
+							this.style.width = '';
+                            this.style.flexShrink = '';							
                             // Возвращаем частичное отображение только если было полное
                             if (this.textContent === this.dataset.full) {
                                 this.textContent = this.dataset.partial;
